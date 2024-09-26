@@ -1,75 +1,27 @@
-export interface WebGPUInstance {
-    device: GPUDevice;
-}
 
-const F32SIZE = 4;
-
-type TensorOptions = { usage: GPUFlagsConstant, mappedAtCreation: boolean | undefined };
-
-export interface Tensor {
-    buffer: GPUBuffer;
-    shape: Shape;
-    dtype: DType;
-    device: Device;
-    readable: boolean;
-    readFloat32(options?: { mode: GPUFlagsConstant }): Promise<Float32NDArray>;
-};
-
-export type Shape = number[];
-
-export enum DType {
-    Float16 = 'Float16',
-}
-
-export enum Device {
-    GPU = 'GPU',
-}
-
-
-type NDArray = Array<NDArray | number>;
-
-type Float32NDArray = Array<Float32NDArray> | Float32Array;
-
-export interface Tensors {
-    empty(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor>;
-    ones(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor>;
-    rand(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor>;
-    zeros(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor>;
-    tensor(array: NDArray, options?: Partial<TensorOptions> | undefined): Promise<Tensor>;
-
-    matmul(tensorA: Tensor, tensorB: Tensor): Promise<void>;
-
-    compute(): Promise<void>;
-    copy(tensorSource: Tensor, tensorDestination: Tensor): Promise<void>;
-
-    destroy(): void;
-
-    print(...data: unknown[]): Promise<void>;
-};
-
-function buildShapeFromRecursiveArray(array: NDArray): Array<number> {
+function buildShapeFromRecursiveArray(array: NDArray): Size {
     let a: number | NDArray = array;
-    let shape: Shape = [];
+    let shape = new Size([]);
     while (Array.isArray(a)) {
-        shape = [...shape, a.length];
+        shape.data = [...shape.data, a.length];
         a = a[0];
     }
     return shape;
 }
 
-function getShapeSize(shape: Shape): number {
-    return shape.reduce((acc, s) => s * acc, 1);
+function getShapeSize(dim: number[]): number {
+    return dim.reduce((acc, s) => s * acc, 1);
 }
 
-function stridedToNDFloat32Array(buffer: ArrayBuffer, shape: Shape, offset = 0, depth = 0): Float32NDArray {
+function stridedToNDFloat32Array(buffer: ArrayBuffer, dim: number[], offset = 0, depth = 0): Float32NDArray {
 
-    if (shape.length === 1) {
-        const length = getShapeSize(shape) * F32SIZE;
+    if (dim.length === 1) {
+        const length = getShapeSize(dim) * F32SIZE;
         return new Float32Array(buffer.slice(offset, offset + length));
     }
     let array: Float32NDArray = [];    
-    for (let n = 0; n < shape[0]; n++) {
-        let nestedShape = [...shape];
+    for (let n = 0; n < dim[0]; n++) {
+        let nestedShape = [...dim];
         nestedShape.shift();
         const length = getShapeSize(nestedShape) * F32SIZE;
         let i = length * n;
@@ -93,6 +45,82 @@ function float32ArrayToString(array: Float32NDArray): string {
     });
     return `[${output}]`;
 }
+
+export interface WebGPUInstance {
+    device: GPUDevice;
+}
+
+const F32SIZE = 4;
+
+type TensorOptions = { usage: GPUFlagsConstant, mappedAtCreation: boolean | undefined };
+
+export interface Tensor {
+    buffer: GPUBuffer;
+    shape: Size;
+    dtype: DType;
+    device: Device;
+    readable: boolean;
+    readFloat32(options?: { mode: GPUFlagsConstant }): Promise<Float32NDArray>;
+    size(dim?: number): Size | number;
+};
+
+class Size  {
+    data: number[];
+    constructor(data: number[]) {
+        this.data = data;
+    }
+
+    get length() {
+        return this.data.length;
+    }
+
+    get size() {
+       return getShapeSize(this.data);
+    }
+
+    getDim(dim: number) {
+        return this.data[dim];
+    }
+
+    toString() {
+        return `Size[${this.data.join(',')}]`;
+    }
+}
+
+// export type Shape = Size;
+
+export enum DType {
+    Float32 = 'Float32',
+}
+
+export enum Device {
+    GPU = 'GPU',
+}
+
+
+type NDArray = Array<NDArray | number>;
+
+type Float32NDArray = Array<Float32NDArray> | Float32Array;
+
+type Shape = number[];
+
+export interface Tensors {
+    empty(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor>;
+    ones(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor>;
+    rand(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor>;
+    zeros(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor>;
+    tensor(array: NDArray, options?: Partial<TensorOptions> | undefined): Promise<Tensor>;
+
+    matmul(tensorA: Tensor, tensorB: Tensor): Promise<void>;
+
+    compute(): Promise<void>;
+    copy(tensorSource: Tensor, tensorDestination: Tensor): Promise<void>;
+
+    destroy(): void;
+
+    print(...data: unknown[]): Promise<void>;
+};
+
 class WebGPUTensors implements Tensors {
     static _instance?: WebGPUInstance;
 
@@ -136,10 +164,10 @@ class WebGPUTensors implements Tensors {
         WebGPUTensors._instance?.device.destroy();
     }
 
-    async create(shape: Shape, options: TensorOptions) {
+    async create(shape: Size, options: TensorOptions) {
         const { usage, mappedAtCreation } = options;
         const { device } = await this.instance || {};
-        let size = getShapeSize(shape) * F32SIZE;
+        let size = shape.size * F32SIZE;
         return new GPUTensor(device.createBuffer({
             mappedAtCreation,
             size,
@@ -149,7 +177,7 @@ class WebGPUTensors implements Tensors {
 
     async empty(shape: Shape, options?: Partial<TensorOptions> | undefined) {
         const { usage =  GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST, mappedAtCreation = false } = options || {};
-        return this.create(shape, { usage, mappedAtCreation });
+        return this.create(new Size(shape), { usage, mappedAtCreation });
     }
 
     async tensor(array: NDArray, options?: Partial<TensorOptions> | undefined): Promise<Tensor> {
@@ -162,22 +190,22 @@ class WebGPUTensors implements Tensors {
 
     async ones(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor> {
         const { usage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC, mappedAtCreation = true } = options || {};
-        let tensor = await this.create(shape, {usage, mappedAtCreation });
-        const array = new Array(tensor.size).fill(1);
+        let tensor = await this.create(new Size(shape), {usage, mappedAtCreation });
+        const array = new Array(tensor.shape.size).fill(1);
         return tensor.set(array);
     }
 
     async rand(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor> {
         const { usage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC, mappedAtCreation = true } = options || {};
-        let tensor = await this.create(shape, {usage, mappedAtCreation });
+        let tensor = await this.create(new Size(shape), {usage, mappedAtCreation });
         const array = Array.from(new Array(tensor.size), () => Math.random());
         return tensor.set(array);
     }
 
     async zeros(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor> {
         const { usage = GPUBufferUsage.MAP_WRITE | GPUBufferUsage.COPY_SRC, mappedAtCreation = true } = options || {};
-        let tensor = await this.create(shape, {usage, mappedAtCreation });
-        const array = new Array(tensor.size).fill(0);
+        let tensor = await this.create(new Size(shape), {usage, mappedAtCreation });
+        const array = new Array(tensor.shape.size).fill(0);
         return tensor.set(array);
     }
 
@@ -201,7 +229,7 @@ class WebGPUTensors implements Tensors {
                 0,
                 (tensorDestination as GPUTensor).buffer,
                 0,
-                (tensorSource as GPUTensor).size * F32SIZE
+                tensorSource.shape.size * F32SIZE
             );
         this.commands.push(copyEncoder.finish());
     }
@@ -215,7 +243,7 @@ class WebGPUTensors implements Tensors {
                 0,
                 (tensorDestination as GPUTensor).buffer,
                 0,
-                (tensorSource as GPUTensor).size * F32SIZE
+                tensorSource.shape.size * F32SIZE
             );
 
         this.commands.push(copyEncoder.finish());
@@ -224,7 +252,7 @@ class WebGPUTensors implements Tensors {
     async getStaging(source: GPUTensor) {
         let staging = source;
         if (!source.readable) {
-            staging = await this.empty(source.shape);
+            staging = await this.empty(source.shape.data);
             await this.copy(source, staging);
         }
         await this.compute();
@@ -250,19 +278,26 @@ class WebGPUTensors implements Tensors {
 
 class GPUTensor implements Tensor {
     buffer: GPUBuffer;
-    shape: Shape;
+    shape: Size;
     dtype: DType;
     readable: boolean;
 
-    constructor(buffer: GPUBuffer, shape: Shape, readable = false, dtype = DType.Float16) {
+    constructor(buffer: GPUBuffer, shape: Size, readable = false, dtype = DType.Float32) {
         this.buffer = buffer;
         this.shape = shape;
         this.dtype = dtype;
         this.readable = readable;
     }
 
-    get size() {
-        return getShapeSize(this.shape);
+    /* get size() {
+        return getShapeSize(this.shape.data);
+    } */
+
+    size(dim?: number) {
+        if (dim === undefined) {
+            return this.shape;
+        }
+        return this.shape.getDim(dim);
     }
 
     get device() {
@@ -286,7 +321,7 @@ class GPUTensor implements Tensor {
 
     async readFloat32(options?: { mode: GPUFlagsConstant }) {
         const buffer = await this.read(options);
-        const array = stridedToNDFloat32Array(buffer, this.shape);
+        const array = stridedToNDFloat32Array(buffer, this.shape.data);
         this.buffer.unmap();
 
         return array;
