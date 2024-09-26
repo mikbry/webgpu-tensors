@@ -61,16 +61,20 @@ function getShapeSize(shape: Shape): number {
     return shape.reduce((acc, s) => s * acc, 1);
 }
 
-function stridedToNDFloat32Array(buffer: ArrayBuffer, shape: Shape): Float32NDArray {
-    let array: Float32NDArray = [];    
-    const length = shape[shape.length - 1] * F32SIZE;
+function stridedToNDFloat32Array(buffer: ArrayBuffer, shape: Shape, offset = 0, depth = 0): Float32NDArray {
+
     if (shape.length === 1) {
-        return new Float32Array(buffer.slice(0));
+        const length = getShapeSize(shape) * F32SIZE;
+        return new Float32Array(buffer.slice(offset, offset + length));
     }
+    let array: Float32NDArray = [];    
     for (let n = 0; n < shape[0]; n++) {
+        let nestedShape = [...shape];
+        nestedShape.shift();
+        const length = getShapeSize(nestedShape) * F32SIZE;
         let i = length * n;
-        let chunk = buffer.slice(i, i + length);
-        array.push(new Float32Array(chunk));
+        let nestedArray = stridedToNDFloat32Array(buffer, nestedShape, offset + i, depth + 1);
+        array.push(nestedArray);
     }
     return array;
 }
@@ -81,7 +85,7 @@ function float32ArrayToString(array: Float32NDArray): string {
         if (output.length > 0) {
             output += ',';
         }
-        if (value instanceof Float32Array) {
+        if (value instanceof Float32Array || Array.isArray(value)) {
             output += float32ArrayToString(value);
         } else {
             output += value.toString();
@@ -150,7 +154,7 @@ class WebGPUTensors implements Tensors {
 
     async tensor(array: NDArray, options?: Partial<TensorOptions> | undefined): Promise<Tensor> {
         let shape = buildShapeFromRecursiveArray(array);
-        let flat = (shape.length === 1 ? array : array.flat()) as number[];
+        let flat = (shape.length === 1 ? array : array.flat(shape.length as 10)) as number[];
         const { usage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC, mappedAtCreation = true } = options || {};
         let tensor = await this.create(shape, {usage, mappedAtCreation });
         return tensor.set(flat);
