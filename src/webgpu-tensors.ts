@@ -12,7 +12,7 @@ export interface Tensor {
     dtype: DType;
     device: Device;
     readable: boolean;
-    readF16(options?: { mode: GPUFlagsConstant }): Promise<Float32Array>;
+    readFloat32(options?: { mode: GPUFlagsConstant }): Promise<Float32NDArray>;
 };
 
 export type Shape = number[];
@@ -26,14 +26,16 @@ export enum Device {
 }
 
 
-type RecursiveArray = Array<RecursiveArray | number>;
+type NDArray = Array<NDArray | number>;
+
+type Float32NDArray = Array<Float32NDArray> | Float32Array;
 
 export interface Tensors {
     empty(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor>;
     ones(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor>;
     rand(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor>;
     zeros(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor>;
-    tensor(array: RecursiveArray, options?: Partial<TensorOptions> | undefined): Promise<Tensor>;
+    tensor(array: NDArray, options?: Partial<TensorOptions> | undefined): Promise<Tensor>;
 
     matmul(tensorA: Tensor, tensorB: Tensor): Promise<void>;
 
@@ -45,8 +47,8 @@ export interface Tensors {
     print(...data: unknown[]): Promise<void>;
 };
 
-function buildShapeFromRecursiveArray(array: RecursiveArray): Array<number> {
-    let a: number | RecursiveArray = array;
+function buildShapeFromRecursiveArray(array: NDArray): Array<number> {
+    let a: number | NDArray = array;
     let shape: Shape = [];
     while (Array.isArray(a)) {
         shape = [...shape, a.length];
@@ -56,9 +58,37 @@ function buildShapeFromRecursiveArray(array: RecursiveArray): Array<number> {
 }
 
 function getShapeSize(shape: Shape): number {
-    return shape.reduce((s, acc) => s * acc, 1);
+    return shape.reduce((acc, s) => s * acc, 1);
 }
 
+function stridedToNDFloat32Array(buffer: ArrayBuffer, shape: Shape): Float32NDArray {
+    let array: Float32NDArray = [];    
+    const length = shape[shape.length - 1] * F32SIZE;
+    if (shape.length === 1) {
+        return new Float32Array(buffer.slice(0));
+    }
+    for (let n = 0; n < shape[0]; n++) {
+        let i = length * n;
+        let chunk = buffer.slice(i, i + length);
+        array.push(new Float32Array(chunk));
+    }
+    return array;
+}
+
+function float32ArrayToString(array: Float32NDArray): string {
+    let output = '';
+    array.forEach((value) => {
+        if (output.length > 0) {
+            output += ',';
+        }
+        if (value instanceof Float32Array) {
+            output += float32ArrayToString(value);
+        } else {
+            output += value.toString();
+        }
+    });
+    return `[${output}]`;
+}
 class WebGPUTensors implements Tensors {
     static _instance?: WebGPUInstance;
 
@@ -106,7 +136,6 @@ class WebGPUTensors implements Tensors {
         const { usage, mappedAtCreation } = options;
         const { device } = await this.instance || {};
         let size = getShapeSize(shape) * F32SIZE;
-        console.log('create Tensor', usage, shape, mappedAtCreation)
         return new GPUTensor(device.createBuffer({
             mappedAtCreation,
             size,
@@ -119,7 +148,7 @@ class WebGPUTensors implements Tensors {
         return this.create(shape, { usage, mappedAtCreation });
     }
 
-    async tensor(array: RecursiveArray, options?: Partial<TensorOptions> | undefined): Promise<Tensor> {
+    async tensor(array: NDArray, options?: Partial<TensorOptions> | undefined): Promise<Tensor> {
         let shape = buildShapeFromRecursiveArray(array);
         let flat = (shape.length === 1 ? array : array.flat()) as number[];
         const { usage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC, mappedAtCreation = true } = options || {};
@@ -130,7 +159,6 @@ class WebGPUTensors implements Tensors {
     async ones(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor> {
         const { usage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC, mappedAtCreation = true } = options || {};
         let tensor = await this.create(shape, {usage, mappedAtCreation });
-        // TODO build array with 1 values
         const array = new Array(tensor.size).fill(1);
         return tensor.set(array);
     }
@@ -165,31 +193,27 @@ class WebGPUTensors implements Tensors {
         const copyEncoder = device.createCommandEncoder();
         if ("buffer" in tensorSource)
             copyEncoder.copyBufferToBuffer(
-                (tensorSource as GPUTensor).buffer, /* source buffer */
-                0 /* source offset */,
-                (tensorDestination as GPUTensor).buffer, /* destination buffer */
-                0 /* destination offset */,
-                4 * F32SIZE /* size */
+                (tensorSource as GPUTensor).buffer,
+                0,
+                (tensorDestination as GPUTensor).buffer,
+                0,
+                (tensorSource as GPUTensor).size * F32SIZE
             );
-
-        // Submit copy commands.
         this.commands.push(copyEncoder.finish());
     }
 
     async copy(tensorSource: Tensor, tensorDestination: Tensor) {
-        // await this.compute();
         const { device } = await this.instance;
         const copyEncoder = device.createCommandEncoder();
         if ("buffer" in tensorSource)
             copyEncoder.copyBufferToBuffer(
-                (tensorSource as GPUTensor).buffer, /* source buffer */
-                0 /* source offset */,
-                (tensorDestination as GPUTensor).buffer, /* destination buffer */
-                0 /* destination offset */,
-                4 * F32SIZE /* size */
+                (tensorSource as GPUTensor).buffer,
+                0,
+                (tensorDestination as GPUTensor).buffer,
+                0,
+                (tensorSource as GPUTensor).size * F32SIZE
             );
 
-        // Submit copy commands.
         this.commands.push(copyEncoder.finish());
     }
 
@@ -209,7 +233,6 @@ class WebGPUTensors implements Tensors {
             return (async () => {
                 if (d instanceof GPUTensor) {
                     const staging = await this.getStaging(d);
-                    console.log('staging', staging);
                     return staging.asyncToString();
                 }
 
@@ -257,19 +280,17 @@ class GPUTensor implements Tensor {
         return this.buffer.getMappedRange();
     }
 
-    async readF16(options?: { mode: GPUFlagsConstant }) {
-        const array = await this.read(options);
-        const data = array.slice(0);
-        //console.log('array', fArray);
+    async readFloat32(options?: { mode: GPUFlagsConstant }) {
+        const buffer = await this.read(options);
+        const array = stridedToNDFloat32Array(buffer, this.shape);
         this.buffer.unmap();
 
-        return new Float32Array(data);
+        return array;
     }
 
     async asyncToString() {
-        const array = await this.readF16();
-        console.log('array', array)
-        return `tensor([${array}])`;
+        const array = await this.readFloat32();
+        return `tensor(${float32ArrayToString(array)})`;
     }
 }
 
