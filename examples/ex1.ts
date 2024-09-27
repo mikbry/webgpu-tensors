@@ -25,7 +25,8 @@ t.print(x.size());
 t.print(x.size(1));
 
 t.reset();
-x = await t.rand([4, 4]);
-let y = await t.rand([4, 4]);
-y = await t.matmul(x, y);
-t.print('matmul', y);
+x = await t.tensor([[0, 0, 0, 0], [1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]]);
+const y = await t.tensor([[0, 0, 0, 0], [1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]]);
+await t.print('matmul', x, y);
+const result = await t.matmul(x, y);
+t.print('matmul', x, y, result);

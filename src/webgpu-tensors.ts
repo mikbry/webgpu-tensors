@@ -314,14 +314,14 @@ class WebGPUTensors implements Tensors {
     }
 
     async rand(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor> {
-        const { usage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC, mappedAtCreation = true } = options || {};
+        const { usage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST, mappedAtCreation = true } = options || {};
         let tensor = await this.create(new Size(shape), { usage, mappedAtCreation });
         const array = Array.from(new Array(tensor.size), () => Math.random());
         return tensor.set(array);
     }
 
     async randn(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor> {
-        const { usage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC, mappedAtCreation = true } = options || {};
+        const { usage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST, mappedAtCreation = true } = options || {};
         let tensor = await this.create(new Size(shape), { usage, mappedAtCreation });
 
         // Box-Muller transform
@@ -350,6 +350,7 @@ class WebGPUTensors implements Tensors {
         const instance = await this.instance;
         instance?.device.queue.submit(this.commands);
         this.hasComputeOnce = true;
+        this.reset();
     }
 
 
@@ -362,7 +363,7 @@ class WebGPUTensors implements Tensors {
             throw new Error(error);
         }
 
-        const destination = await this.empty([inputShape[0], otherShape[1]]);
+        const result = await this.empty([inputShape[0], otherShape[1]], { usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
         const { device } = await this.instance;
         const computePipeline = device.createComputePipeline({
             layout: 'auto',
@@ -401,7 +402,7 @@ class WebGPUTensors implements Tensors {
             entries: [
                 { binding: 0, resource: { buffer: input.buffer } },
                 { binding: 1, resource: { buffer: other.buffer } },
-                { binding: 2, resource: { buffer: destination.buffer } },
+                { binding: 2, resource: { buffer: result.buffer } },
             ],
         });
 
@@ -414,10 +415,12 @@ class WebGPUTensors implements Tensors {
             Math.ceil(otherShape[1] / 8)
         );
         passEncoder.end();
-
         this.commands.push(commandEncoder.finish());
-
-        return destination;
+        await this.compute();
+        this.reset();
+        const read = await this.empty(result.shape.data);
+        await this.copy(result, read);
+        return read;
     }
 
 
