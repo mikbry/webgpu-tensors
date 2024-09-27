@@ -130,6 +130,8 @@ export interface Tensors {
     destroy(): void;
 
     print(...data: unknown[]): Promise<void>;
+
+    sigmoid(tensor: Tensor): Promise<Tensor>;
 };
 
 class WebGPUTensors implements Tensors {
@@ -145,6 +147,51 @@ class WebGPUTensors implements Tensors {
 
     static create() {
         return new WebGPUTensors() as Tensors;
+    }
+
+    async sigmoid(tensor: Tensor): Promise<Tensor> {
+        const { device } = await this.instance;
+        const result = await this.empty(tensor.shape.data, { usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
+
+        const computePipeline = device.createComputePipeline({
+            layout: 'auto',
+            compute: {
+                module: device.createShaderModule({
+                    code: `
+                    @group(0) @binding(0) var<storage, read> input: array<f32>;
+                    @group(0) @binding(1) var<storage, read_write> output: array<f32>;
+
+                    @compute @workgroup_size(256)
+                    fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+                        let index = global_id.x;
+                        if (index < arrayLength(&input)) {
+                            output[index] = 1.0 / (1.0 + exp(-input[index]));
+                        }
+                    }
+                    `
+                }),
+                entryPoint: 'main'
+            }
+        });
+
+        const bindGroup = device.createBindGroup({
+            layout: computePipeline.getBindGroupLayout(0),
+            entries: [
+                { binding: 0, resource: { buffer: tensor.buffer } },
+                { binding: 1, resource: { buffer: result.buffer } },
+            ],
+        });
+
+        const commandEncoder = device.createCommandEncoder();
+        const passEncoder = commandEncoder.beginComputePass();
+        passEncoder.setPipeline(computePipeline);
+        passEncoder.setBindGroup(0, bindGroup);
+        passEncoder.dispatchWorkgroups(Math.ceil(tensor.shape.size / 256));
+        passEncoder.end();
+
+        this.commands.push(commandEncoder.finish());
+
+        return result;
     }
 
     async max(tensor: Tensor): Promise<Tensor> {
