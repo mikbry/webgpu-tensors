@@ -417,7 +417,7 @@ class WebGPUTensors implements Tensors {
 
         this.commands.push(commandEncoder.finish());
 
-        await this.compute();  // Execute the computation immediately
+        // await this.compute();  // Execute the computation immediately
 
         return destination;
     }
