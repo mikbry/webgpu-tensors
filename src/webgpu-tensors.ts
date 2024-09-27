@@ -115,6 +115,9 @@ export interface Tensors {
     matmul(tensorA: Tensor, tensorB: Tensor): Promise<Tensor>;
     sub(tensorA: Tensor, tensorB: Tensor): Promise<Tensor>;
     pow(tensor: Tensor, exponent: number): Promise<Tensor>;
+    mul(tensorA: Tensor, tensorB: Tensor | number): Promise<Tensor>;
+    gt(tensor: Tensor, value: number): Promise<Tensor>;
+    transpose(tensor: Tensor): Promise<Tensor>;
 
     maximum(tensor: Tensor, value: number): Promise<Tensor>;
     max(tensor: Tensor): Promise<Tensor>;

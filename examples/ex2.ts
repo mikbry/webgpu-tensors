@@ -43,12 +43,19 @@ for (let epoch = 0; epoch < epochs; epoch++) {
   let loss = await t.pow(yPred, 2)
   loss = await t.mean(loss);
 
-  // Backward pass (assuming we have autograd functionality)
-  loss.backward();
+  // Backward pass (manual gradient computation)
+  const grad_y_pred = await t.sub(yPred, y);
+  const grad_y_pred_scaled = await t.mul(grad_y_pred, 2.0 / y.size());
+  const h_relu = await NN.relu(t, await t.matmul(X, model.w1));
+  const grad_w2 = await t.matmul(t.transpose(h_relu), grad_y_pred_scaled);
+  const grad_h = await t.matmul(grad_y_pred_scaled, t.transpose(model.w2));
+  const h = await t.matmul(X, model.w1);
+  const mask = await t.gt(h, 0);
+  const grad_w1 = await t.matmul(t.transpose(X), t.mul(grad_h, mask));
 
-  // Update weights (assuming we have an optimizer)
-  model.w1 = model.w1.sub(model.w1.grad.mul(learningRate));
-  model.w2 = model.w2.sub(model.w2.grad.mul(learningRate));
+  // Update weights
+  model.w1 = await t.sub(model.w1, await t.mul(grad_w1, learningRate));
+  model.w2 = await t.sub(model.w2, await t.mul(grad_w2, learningRate));
 
   // Print progress
   if (epoch % 10 === 0) {
