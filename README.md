@@ -1,5 +1,5 @@
-# webgpu-maths
-Experimental WebGPU Maths
+# webgpu-tensors
+Experimental WebGPU Tensors
 
 
 ## Run examples using Deno
