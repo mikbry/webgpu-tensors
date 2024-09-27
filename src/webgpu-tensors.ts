@@ -117,6 +117,7 @@ export interface Tensors {
     pow(tensor: Tensor, exponent: number): Promise<Tensor>;
 
     maximum(tensor: Tensor, value: number): Promise<Tensor>;
+    max(tensor: Tensor): Promise<Tensor>;
 
     compute(): Promise<void>;
     copy(tensorSource: Tensor, tensorDestination: Tensor): Promise<void>;
@@ -139,6 +140,55 @@ class WebGPUTensors implements Tensors {
 
     static create() {
         return new WebGPUTensors() as Tensors;
+    }
+
+    async max(tensor: Tensor): Promise<Tensor> {
+        const { device } = await this.instance;
+        const result = await this.empty([1], { usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
+
+        const computePipeline = device.createComputePipeline({
+            layout: 'auto',
+            compute: {
+                module: device.createShaderModule({
+                    code: `
+                    @group(0) @binding(0) var<storage, read> input: array<f32>;
+                    @group(0) @binding(1) var<storage, read_write> output: array<f32>;
+
+                    @compute @workgroup_size(256)
+                    fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+                        let index = global_id.x;
+                        if (index == 0) {
+                            var max_value = input[0];
+                            for (var i = 1u; i < arrayLength(&input); i = i + 1u) {
+                                max_value = max(max_value, input[i]);
+                            }
+                            output[0] = max_value;
+                        }
+                    }
+                    `
+                }),
+                entryPoint: 'main'
+            }
+        });
+
+        const bindGroup = device.createBindGroup({
+            layout: computePipeline.getBindGroupLayout(0),
+            entries: [
+                { binding: 0, resource: { buffer: tensor.buffer } },
+                { binding: 1, resource: { buffer: result.buffer } },
+            ],
+        });
+
+        const commandEncoder = device.createCommandEncoder();
+        const passEncoder = commandEncoder.beginComputePass();
+        passEncoder.setPipeline(computePipeline);
+        passEncoder.setBindGroup(0, bindGroup);
+        passEncoder.dispatchWorkgroups(1);
+        passEncoder.end();
+
+        this.commands.push(commandEncoder.finish());
+
+        return result;
     }
 
     async init(): Promise<WebGPUInstance> {
