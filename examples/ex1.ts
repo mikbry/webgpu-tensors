@@ -41,3 +41,8 @@ t.print('matmul', x, y, result);
 x = await t.tensor([-2, -1, 0, 1, 2, 3]);
 const max = await t.maximum(x, 0);
 await t.print("maximum=", max);
+
+// Test for maximum function
+const testTensor = await t.tensor([-3, -2, -1, 0, 1, 2, 3]);
+const maxResult = await t.maximum(testTensor, 0);
+await t.print("Test maximum([-3, -2, -1, 0, 1, 2, 3], 0) =", maxResult);

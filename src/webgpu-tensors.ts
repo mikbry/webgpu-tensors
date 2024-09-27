@@ -429,7 +429,7 @@ class WebGPUTensors implements Tensors {
 
     async maximum(tensor: Tensor, value: number): Promise<Tensor> {
         const { device } = await this.instance;
-        const result = await this.empty(tensor.shape.data);
+        const result = await this.empty(tensor.shape.data, { usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
 
         const computePipeline = device.createComputePipeline({
             layout: 'auto',
@@ -473,7 +473,6 @@ class WebGPUTensors implements Tensors {
 
         this.commands.push(commandEncoder.finish());
         await this.compute();
-        this.reset();
         const read = await this.empty(result.shape.data);
         await this.copy(result, read);
         return read;
