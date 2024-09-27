@@ -93,6 +93,7 @@ async function main() {
     const arrayBuffer = gpuReadBuffer.getMappedRange();
     const result = new Float32Array(arrayBuffer);
     console.log("Result matrix:", result);
+    document.getElementById('result').textContent = `Result matrix: ${result}`;
     gpuReadBuffer.unmap();
 }
 
