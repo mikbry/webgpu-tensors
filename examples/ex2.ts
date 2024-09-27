@@ -1,4 +1,4 @@
-import t, { Tensor, NN } from '../src/webgpu-tensors'
+import t, { Tensor } from '../src/webgpu-tensors'
 
 // Create a simple 2-layer neural network
 class SimpleNN {
@@ -18,14 +18,16 @@ class SimpleNN {
   
     async forward(x: Tensor): Promise<Tensor> {
         const h = await t.matmul(x, this.w1);
-        const h_relu = await NN.relu(t, h);
+        const h_relu = await t.relu(t, h);
         return await t.matmul(h_relu, this.w2);
     }
   }
 
-const X = await t.rand([5, 3]);
-const y = await t.rand([5, 3]);
+// Generate random data
+const X = await t.rand([5, 10]);
+const y = await t.rand([5, 1]);
 
+// Initialize the model
 const model = await SimpleNN.init(10, 5, 1);
 
 // Training loop
@@ -37,7 +39,8 @@ for (let epoch = 0; epoch < epochs; epoch++) {
   let yPred = await model.forward(X);
 
   // Compute loss (Mean Squared Error)
-  const loss = (await yPred.sub(y)).pow(2).mean();
+  yPred = await t.sub(y);
+  const loss = t.pow(yPred, 2).mean();
 
   // Backward pass (assuming we have autograd functionality)
   loss.backward();
@@ -48,8 +51,8 @@ for (let epoch = 0; epoch < epochs; epoch++) {
 
   // Print progress
   if (epoch % 10 === 0) {
-    console.log(`Epoch ${epoch}, Loss: ${loss.item()}`);
+    t.print(`Epoch ${epoch}, Loss: ${loss.item()}`);
   }
 }
 
-console.log('Training complete!');
+t.print('Training complete!');
