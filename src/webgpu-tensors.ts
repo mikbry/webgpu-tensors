@@ -19,7 +19,7 @@ function stridedToNDFloat32Array(buffer: ArrayBuffer, dim: number[], offset = 0,
         const length = getShapeSize(dim) * F32SIZE;
         return new Float32Array(buffer.slice(offset, offset + length));
     }
-    let array: Float32NDArray = [];    
+    let array: Float32NDArray = [];
     for (let n = 0; n < dim[0]; n++) {
         let nestedShape = [...dim];
         nestedShape.shift();
@@ -64,7 +64,7 @@ export interface Tensor {
     size(dim?: number): Size | number;
 };
 
-class Size  {
+class Size {
     data: number[];
     constructor(data: number[]) {
         this.data = data;
@@ -75,7 +75,7 @@ class Size  {
     }
 
     get size() {
-       return getShapeSize(this.data);
+        return getShapeSize(this.data);
     }
 
     getDim(dim: number) {
@@ -108,10 +108,13 @@ export interface Tensors {
     empty(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor>;
     ones(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor>;
     rand(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor>;
+    randn(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor>;
     zeros(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor>;
     tensor(array: NDArray, options?: Partial<TensorOptions> | undefined): Promise<Tensor>;
 
-    matmul(tensorA: Tensor, tensorB: Tensor): Promise<void>;
+    matmul(tensorA: Tensor, tensorB: Tensor): Promise<Tensor>;
+
+    maximum(tensor: Tensor, value: number): Promise<Tensor>;
 
     compute(): Promise<void>;
     copy(tensorSource: Tensor, tensorDestination: Tensor): Promise<void>;
@@ -176,7 +179,7 @@ class WebGPUTensors implements Tensors {
     }
 
     async empty(shape: Shape, options?: Partial<TensorOptions> | undefined) {
-        const { usage =  GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST, mappedAtCreation = false } = options || {};
+        const { usage = GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST, mappedAtCreation = false } = options || {};
         return this.create(new Size(shape), { usage, mappedAtCreation });
     }
 
@@ -184,27 +187,43 @@ class WebGPUTensors implements Tensors {
         let shape = buildShapeFromRecursiveArray(array);
         let flat = (shape.length === 1 ? array : array.flat(shape.length as 10)) as number[];
         const { usage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC, mappedAtCreation = true } = options || {};
-        let tensor = await this.create(shape, {usage, mappedAtCreation });
+        let tensor = await this.create(shape, { usage, mappedAtCreation });
         return tensor.set(flat);
     }
 
     async ones(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor> {
         const { usage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC, mappedAtCreation = true } = options || {};
-        let tensor = await this.create(new Size(shape), {usage, mappedAtCreation });
+        let tensor = await this.create(new Size(shape), { usage, mappedAtCreation });
         const array = new Array(tensor.shape.size).fill(1);
         return tensor.set(array);
     }
 
     async rand(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor> {
         const { usage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC, mappedAtCreation = true } = options || {};
-        let tensor = await this.create(new Size(shape), {usage, mappedAtCreation });
+        let tensor = await this.create(new Size(shape), { usage, mappedAtCreation });
         const array = Array.from(new Array(tensor.size), () => Math.random());
+        return tensor.set(array);
+    }
+
+    async randn(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor> {
+        const { usage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC, mappedAtCreation = true } = options || {};
+        let tensor = await this.create(new Size(shape), { usage, mappedAtCreation });
+
+        // Box-Muller transform
+        const boxMullerTransform = () => {
+            const u1 = Math.random();
+            const u2 = Math.random();
+            const z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+            return z0;
+        };
+
+        const array = Array.from(new Array(tensor.size), () => boxMullerTransform());
         return tensor.set(array);
     }
 
     async zeros(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor> {
         const { usage = GPUBufferUsage.MAP_WRITE | GPUBufferUsage.COPY_SRC, mappedAtCreation = true } = options || {};
-        let tensor = await this.create(new Size(shape), {usage, mappedAtCreation });
+        let tensor = await this.create(new Size(shape), { usage, mappedAtCreation });
         const array = new Array(tensor.shape.size).fill(0);
         return tensor.set(array);
     }
@@ -219,19 +238,79 @@ class WebGPUTensors implements Tensors {
     }
 
 
-    async matmul(tensorSource: Tensor, tensorDestination: Tensor) {
-        // TODO matmul
+    async matmul(input: Tensor, other: Tensor) {
+        const inputShape = input.shape.data;
+        const otherShape = other.shape.data;
+
+        if (inputShape[1] !== otherShape[0]) {
+            throw new Error("Incompatible matrix dimensions for multiplication");
+        }
+
+        const destination = await this.empty(inputShape);
         const { device } = await this.instance;
-        const copyEncoder = device.createCommandEncoder();
-        if ("buffer" in tensorSource)
-            copyEncoder.copyBufferToBuffer(
-                (tensorSource as GPUTensor).buffer,
-                0,
-                (tensorDestination as GPUTensor).buffer,
-                0,
-                tensorSource.shape.size * F32SIZE
-            );
-        this.commands.push(copyEncoder.finish());
+        const computePipeline = device.createComputePipeline({
+            layout: 'auto',
+            compute: {
+                module: device.createShaderModule({
+                    code: `
+                @group(0) @binding(0) var<storage, read> a: array<f32>;
+                @group(0) @binding(1) var<storage, read> b: array<f32>;
+                @group(0) @binding(2) var<storage, read_write> c: array<f32>;
+      
+                @compute @workgroup_size(8, 8)
+                fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+                  let row = global_id.x;
+                  let col = global_id.y;
+                  let m = ${inputShape[0]}u;
+                  let n = ${inputShape[1]}u;
+                  let p = ${otherShape[1]}u;
+      
+                  if (row < m && col < p) {
+                    var sum = 0.0;
+                    for (var i = 0u; i < n; i = i + 1u) {
+                      sum = sum + a[row * n + i] * b[i * p + col];
+                    }
+                    c[row * p + col] = sum;
+                  }
+                }
+              `
+                }),
+                entryPoint: 'main'
+            }
+        });
+
+        const bindGroupLayout = computePipeline.getBindGroupLayout(0);
+        const bindGroup = device.createBindGroup({
+            layout: bindGroupLayout,
+            entries: [
+                { binding: 0, resource: { buffer: input.buffer } },
+                { binding: 1, resource: { buffer: other.buffer } },
+                { binding: 2, resource: { buffer: destination.buffer } },
+            ],
+        });
+
+        const commandEncoder = device.createCommandEncoder();
+        const passEncoder = commandEncoder.beginComputePass();
+        passEncoder.setPipeline(computePipeline);
+        passEncoder.setBindGroup(0, bindGroup);
+        passEncoder.dispatchWorkgroups(
+            Math.ceil(inputShape[0] / 8),
+            Math.ceil(otherShape[1] / 8)
+        );
+        passEncoder.end();
+
+        this.commands.push(commandEncoder.finish());
+
+        return destination;
+    }
+
+
+    async maximum(tensor: Tensor, value: number): Promise<Tensor> {
+        // Implementation depends on your backend
+        // This is a placeholder example
+        const result = await this.empty(tensor.shape.data);
+        // return new GPUTensor(this.data.map(x => Math.max(x, value)));
+        return result;
     }
 
     async copy(tensorSource: Tensor, tensorDestination: Tensor) {
@@ -289,10 +368,6 @@ class GPUTensor implements Tensor {
         this.readable = readable;
     }
 
-    /* get size() {
-        return getShapeSize(this.shape.data);
-    } */
-
     size(dim?: number) {
         if (dim === undefined) {
             return this.shape;
@@ -341,3 +416,9 @@ export default (function (): Tensors {
     }
     return tensors;
 })();
+
+export class NN {
+    static async relu(t: Tensors, x: Tensor): Promise<Tensor> {
+        return t.maximum(x, 0);
+    }
+}
