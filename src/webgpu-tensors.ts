@@ -925,6 +925,7 @@ class WebGPUTensors implements Tensors {
             await this.copy(source, staging);
         }
         await this.compute();
+        await (await this.instance).device.queue.onSubmittedWorkDone();
         this.commands = [];
         return staging;
     }
