@@ -566,6 +566,61 @@ class WebGPUTensors implements Tensors {
         return result;                                                                                   
     }
 
+    async softmax(tensor: Tensor): Promise<Tensor> {
+        const { device } = await this.instance;
+        const result = await this.empty(tensor.shape.data, { usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
+
+        const computePipeline = device.createComputePipeline({
+            layout: 'auto',
+            compute: {
+                module: device.createShaderModule({
+                    code: `
+                    @group(0) @binding(0) var<storage, read> input: array<f32>;
+                    @group(0) @binding(1) var<storage, read_write> output: array<f32>;
+
+                    @compute @workgroup_size(256)
+                    fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+                        let index = global_id.x;
+                        if (index < arrayLength(&input)) {
+                            var max_val = input[0];
+                            for (var i = 1u; i < arrayLength(&input); i = i + 1u) {
+                                max_val = max(max_val, input[i]);
+                            }
+
+                            var sum = 0.0;
+                            for (var i = 0u; i < arrayLength(&input); i = i + 1u) {
+                                sum += exp(input[i] - max_val);
+                            }
+
+                            output[index] = exp(input[index] - max_val) / sum;
+                        }
+                    }
+                    `
+                }),
+                entryPoint: 'main'
+            }
+        });
+
+        const bindGroup = device.createBindGroup({
+            layout: computePipeline.getBindGroupLayout(0),
+            entries: [
+                { binding: 0, resource: { buffer: tensor.buffer } },
+                { binding: 1, resource: { buffer: result.buffer } },
+            ],
+        });
+
+        const commandEncoder = device.createCommandEncoder();
+        const passEncoder = commandEncoder.beginComputePass();
+        passEncoder.setPipeline(computePipeline);
+        passEncoder.setBindGroup(0, bindGroup);
+        passEncoder.dispatchWorkgroups(Math.ceil(tensor.shape.size / 256));
+        passEncoder.end();
+
+        this.commands.push(commandEncoder.finish());
+
+        return result;
+    }
+
     async getStaging(source: GPUTensor) {
         let staging = source;
         if (!source.readable) {
