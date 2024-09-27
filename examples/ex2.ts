@@ -19,15 +19,14 @@ class SimpleNN {
     async forward(x: Tensor): Promise<Tensor> {
         const xW1 = await t.matmul(x, this.w1);
         const h = await t.relu(xW1);
-        t.print('h', h)
-        return await t.matmul(h, this.w2);
+        const result = await t.matmul(h, this.w2);
+        return result;
     }
 }
 
 // Generate random data
 const X = await t.rand([5, 10]);
 const y = await t.rand([5, 1]);
-
 // Initialize the model
 const model = await SimpleNN.init(10, 5, 1);
 
@@ -35,10 +34,9 @@ const model = await SimpleNN.init(10, 5, 1);
 const learningRate = 0.01;
 const epochs = 100;
 
-for (let epoch = 0; epoch < epochs; epoch++) {
+for (let epoch = 0; epoch <= epochs; epoch++) {
     // Forward pass
     let yPred = await model.forward(X);
-    t.print('yPred', yPred);
 
     // Compute loss (Mean Squared Error)
     yPred = await t.sub(yPred, y);
@@ -62,7 +60,7 @@ for (let epoch = 0; epoch < epochs; epoch++) {
 
     // Print progress
     if (epoch % 10 === 0) {
-        t.print(`Epoch ${epoch}, Loss: ${await t.item(loss)}`);
+        await t.print(`Epoch ${epoch}, Loss: ${await t.item(loss)}`);
     }
 }
 

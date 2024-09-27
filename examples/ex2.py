@@ -10,7 +10,6 @@ class SimpleNN:
     def forward(self, x):
         x_w1 = torch.matmul(x, self.w1)
         h = torch.relu(x_w1)
-        print('h', h)
         return torch.matmul(h, self.w2)
 
 # Generate random data
@@ -24,10 +23,9 @@ model = SimpleNN(10, 5, 1)
 learning_rate = 0.01
 epochs = 100
 
-for epoch in range(epochs):
+for epoch in range(epochs + 1):
     # Forward pass
     y_pred = model.forward(X)
-    print('y_pred', y_pred)
     # Compute loss (Mean Squared Error)
     loss = ((y_pred - y) ** 2).mean()
 

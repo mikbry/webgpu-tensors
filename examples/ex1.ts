@@ -36,13 +36,14 @@ x = await t.tensor([[0, 0, 0, 0], [1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]]);
 const y = await t.tensor([[0, 0, 0, 0], [1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]]);
 await t.print('matmul', x, y);
 const result = await t.matmul(x, y);
-t.print('matmul', x, y, result);
+t.print('matmul', result);
 
-x = await t.tensor([-2, -1, 0, 1, 2, 3]);
+x = await t.tensor([[-3, -2, -1, 0], [0, 1, 2, 3], [0, 1, 2, 3], [0, 1, 2, 3]]);
 const max = await t.maximum(x, 0);
 await t.print("maximum=", max);
 
 // Test for maximum function
-const testTensor = await t.tensor([-3, -2, -1, 0, 1, 2, 3]);
-const maxResult = await t.maximum(testTensor, 0);
-await t.print("Test maximum([-3, -2, -1, 0, 1, 2, 3], 0) =", maxResult);
+const testTensor = await t.tensor([[-3, -2, -1, 0], [0, 1, 2, 3], [0, 1, 2, 3], [0, 1, 2, 3]]);
+const mul = await t.matmul(testTensor, x);
+const maxResult = await t.maximum(mul, 0);
+await t.print("Test maximum=", maxResult);
