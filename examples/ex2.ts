@@ -34,7 +34,7 @@ const epochs = 100;
 
 for (let epoch = 0; epoch < epochs; epoch++) {
   // Forward pass
-  const yPred = await model.forward(X);
+  let yPred = await model.forward(X);
 
   // Compute loss (Mean Squared Error)
   const loss = (await yPred.sub(y)).pow(2).mean();
