@@ -62,6 +62,7 @@ export interface Tensor {
     readable: boolean;
     readFloat32(options?: { mode: GPUFlagsConstant }): Promise<Float32NDArray>;
     size(dim?: number): Size | number;
+    numel(): number;
 };
 
 class Size {
@@ -120,18 +121,24 @@ export interface Tensors {
     transpose(tensor: Tensor): Promise<Tensor>;
 
     maximum(tensor: Tensor, value: number): Promise<Tensor>;
+    relu(x: Tensor): Promise<Tensor>;
+
     max(tensor: Tensor): Promise<Tensor>;
 
     mean(tensor: Tensor): Promise<Tensor>;
 
+    sigmoid(tensor: Tensor): Promise<Tensor>;
+
+    reset(): void;
     compute(): Promise<void>;
     copy(tensorSource: Tensor, tensorDestination: Tensor): Promise<void>;
+    
+    item(tensor: Tensor): Promise<number>;
 
     destroy(): void;
 
     print(...data: unknown[]): Promise<void>;
 
-    sigmoid(tensor: Tensor): Promise<Tensor>;
 };
 
 class WebGPUTensors implements Tensors {
@@ -149,9 +156,13 @@ class WebGPUTensors implements Tensors {
         return new WebGPUTensors() as Tensors;
     }
 
+    reset() {
+        this.commands = [];
+    }
+
     async sigmoid(tensor: Tensor): Promise<Tensor> {
         const { device } = await this.instance;
-        const result = await this.empty(tensor.shape.data, { usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
+        const result = await this.empty(tensor.shape.data);
 
         const computePipeline = device.createComputePipeline({
             layout: 'auto',
@@ -347,10 +358,11 @@ class WebGPUTensors implements Tensors {
         const otherShape = other.shape.data;
 
         if (inputShape[1] !== otherShape[0]) {
-            throw new Error("Incompatible matrix dimensions for multiplication");
+            let error = `Incompatible matrix dimensions for multiplication ${inputShape[1]} ${otherShape[0]}`;
+            throw new Error(error);
         }
 
-        const destination = await this.empty(inputShape);
+        const destination = await this.empty([inputShape[0], otherShape[1]]);
         const { device } = await this.instance;
         const computePipeline = device.createComputePipeline({
             layout: 'auto',
@@ -411,7 +423,7 @@ class WebGPUTensors implements Tensors {
 
     async maximum(tensor: Tensor, value: number): Promise<Tensor> {
         const { device } = await this.instance;
-        const result = await this.empty(tensor.shape.data, { usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
+        const result = await this.empty(tensor.shape.data);
 
         const computePipeline = device.createComputePipeline({
             layout: 'auto',
@@ -454,12 +466,16 @@ class WebGPUTensors implements Tensors {
         return result;
     }
 
+    async relu(x: Tensor): Promise<Tensor> {
+        return this.maximum(x, 0);
+    }
+
     async sub(tensorA: Tensor, tensorB: Tensor): Promise<Tensor> {
         const { device } = await this.instance;
         if (!tensorA.shape.data.every((dim, i) => dim === tensorB.shape.data[i])) {
             throw new Error("Tensor shapes must match for subtraction");
         }
-        const result = await this.empty(tensorA.shape.data, { usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
+        const result = await this.empty(tensorA.shape.data);
 
         const computePipeline = device.createComputePipeline({
             layout: 'auto',
@@ -506,7 +522,7 @@ class WebGPUTensors implements Tensors {
 
     async pow(tensor: Tensor, exponent: number): Promise<Tensor> {
         const { device } = await this.instance;
-        const result = await this.empty(tensor.shape.data, { usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
+        const result = await this.empty(tensor.shape.data);
 
         const computePipeline = device.createComputePipeline({
             layout: 'auto',
@@ -566,7 +582,7 @@ class WebGPUTensors implements Tensors {
 
     async mean(tensor: Tensor): Promise<Tensor> {
         const { device } = await this.instance;
-        const result = await this.empty([1], { usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
+        const result = await this.empty([1]);
 
         const computePipeline = device.createComputePipeline({
             layout: 'auto',
@@ -615,7 +631,7 @@ class WebGPUTensors implements Tensors {
 
     async softmax(tensor: Tensor): Promise<Tensor> {
         const { device } = await this.instance;
-        const result = await this.empty(tensor.shape.data, { usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
+        const result = await this.empty(tensor.shape.data);
 
         const computePipeline = device.createComputePipeline({
             layout: 'auto',
@@ -676,10 +692,7 @@ class WebGPUTensors implements Tensors {
         let bindGroup: GPUBindGroup;
 
         if (typeof tensorB === 'number') {
-            result = await this.empty(tensorA.shape.data, {
-                usage: GPUBufferUsage.STORAGE |
-                    GPUBufferUsage.COPY_SRC
-            });
+            result = await this.empty(tensorA.shape.data);
             computePipeline = device.createComputePipeline({
                 layout: 'auto',
                 compute: {
@@ -712,10 +725,7 @@ class WebGPUTensors implements Tensors {
             if (!tensorA.shape.data.every((dim, i) => dim === tensorB.shape.data[i])) {
                 throw new Error("Tensor shapes must match for element-wise multiplication");
             }
-            result = await this.empty(tensorA.shape.data, {
-                usage: GPUBufferUsage.STORAGE |
-                    GPUBufferUsage.COPY_SRC
-            });
+            result = await this.empty(tensorA.shape.data);
             computePipeline = device.createComputePipeline({
                 layout: 'auto',
                 compute: {
@@ -762,10 +772,7 @@ class WebGPUTensors implements Tensors {
 
     async gt(tensor: Tensor, value: number): Promise<Tensor> {
         const { device } = await this.instance;
-        const result = await this.empty(tensor.shape.data, {
-            usage: GPUBufferUsage.STORAGE |
-                GPUBufferUsage.COPY_SRC
-        });
+        const result = await this.empty(tensor.shape.data);
 
         const computePipeline = device.createComputePipeline({
             layout: 'auto',
@@ -814,10 +821,7 @@ class WebGPUTensors implements Tensors {
             throw new Error("Transpose operation is only supported for 2D tensors");
         }
         const [rows, cols] = tensor.shape.data;
-        const result = await this.empty([cols, rows], {
-            usage: GPUBufferUsage.STORAGE |
-                GPUBufferUsage.COPY_SRC
-        });
+        const result = await this.empty([cols, rows]);
 
         const computePipeline = device.createComputePipeline({
             layout: 'auto',
@@ -925,6 +929,16 @@ class WebGPUTensors implements Tensors {
         return staging;
     }
 
+
+    async item(tensor: Tensor): Promise<number> {
+        if (tensor.numel() !== 1) {
+            throw new Error("item() can only be called on tensors with a single element");
+        }
+        const staging = await this.getStaging(tensor as GPUTensor);
+        const data = await staging.readFloat32();
+        return data[0] as number;
+    }
+
     async print(...data: ({ toString?: () => {}; asyncToString?: () => Promise<void> })[]) {
         const promises = data.map((d) => {
             return (async () => {
@@ -975,6 +989,10 @@ class GPUTensor implements Tensor {
         return this;
     }
 
+    numel(): number {
+        return this.shape.size;
+    }
+
     async read({ mode = GPUMapMode.READ } = {}) {
         await this.buffer.mapAsync(mode);
         return this.buffer.getMappedRange();
@@ -1002,9 +1020,3 @@ export default (function (): Tensors {
     }
     return tensors;
 })();
-
-export class NN {
-    static async relu(t: Tensors, x: Tensor): Promise<Tensor> {
-        return t.maximum(x, 0);
-    }
-}
