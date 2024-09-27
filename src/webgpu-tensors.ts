@@ -517,14 +517,14 @@ class WebGPUTensors implements Tensors {
         this.commands.push(copyEncoder.finish());
     }
 
-    async mean(tensor: Tensor): Promise<Tensor> {                                                        
-        const { device } = await this.instance;                                                          
+    async mean(tensor: Tensor): Promise<Tensor> {
+        const { device } = await this.instance;
         const result = await this.empty([1], { usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
-                                                                                                         
-        const computePipeline = device.createComputePipeline({                                           
-            layout: 'auto',                                                                              
-            compute: {                                                                                   
-                module: device.createShaderModule({                                                      
+
+        const computePipeline = device.createComputePipeline({
+            layout: 'auto',
+            compute: {
+                module: device.createShaderModule({
                     code: `                                                                              
                     @group(0) @binding(0) var<storage, read> input: array<f32>;                          
                     @group(0) @binding(1) var<storage, read_write> output: array<f32>;                   
@@ -540,30 +540,30 @@ class WebGPUTensors implements Tensors {
                             output[0] = sum / f32(arrayLength(&input));                                  
                         }                                                                                
                     }                                                                                    
-                    `                                                                                    
-                }),                                                                                      
-                entryPoint: 'main'                                                                       
-            }                                                                                            
-        });                                                                                              
-                                                                                                         
-        const bindGroup = device.createBindGroup({                                                       
-            layout: computePipeline.getBindGroupLayout(0),                                               
-            entries: [                                                                                   
-                { binding: 0, resource: { buffer: tensor.buffer } },                                     
-                { binding: 1, resource: { buffer: result.buffer } },                                     
-            ],                                                                                           
-        });                                                                                              
-                                                                                                         
-        const commandEncoder = device.createCommandEncoder();                                            
-        const passEncoder = commandEncoder.beginComputePass();                                           
-        passEncoder.setPipeline(computePipeline);                                                        
-        passEncoder.setBindGroup(0, bindGroup);                                                          
-        passEncoder.dispatchWorkgroups(1);                                                               
-        passEncoder.end();                                                                               
-                                                                                                         
-        this.commands.push(commandEncoder.finish());                                                     
-                                                                                                         
-        return result;                                                                                   
+                    `
+                }),
+                entryPoint: 'main'
+            }
+        });
+
+        const bindGroup = device.createBindGroup({
+            layout: computePipeline.getBindGroupLayout(0),
+            entries: [
+                { binding: 0, resource: { buffer: tensor.buffer } },
+                { binding: 1, resource: { buffer: result.buffer } },
+            ],
+        });
+
+        const commandEncoder = device.createCommandEncoder();
+        const passEncoder = commandEncoder.beginComputePass();
+        passEncoder.setPipeline(computePipeline);
+        passEncoder.setBindGroup(0, bindGroup);
+        passEncoder.dispatchWorkgroups(1);
+        passEncoder.end();
+
+        this.commands.push(commandEncoder.finish());
+
+        return result;
     }
 
     async softmax(tensor: Tensor): Promise<Tensor> {
@@ -621,18 +621,202 @@ class WebGPUTensors implements Tensors {
         return result;
     }
 
-        
-    mul(tensorA: Tensor, tensorB: Tensor | number): Promise<Tensor> {
-        throw new Error("Method not implemented.");
+
+    async mul(tensorA: Tensor, tensorB: Tensor | number): Promise<Tensor> {
+        const { device } = await this.instance;
+        let result: Tensor;
+        let computePipeline: GPUComputePipeline;
+        let bindGroup: GPUBindGroup;
+
+        if (typeof tensorB === 'number') {
+            result = await this.empty(tensorA.shape.data, {
+                usage: GPUBufferUsage.STORAGE |
+                    GPUBufferUsage.COPY_SRC
+            });
+            computePipeline = device.createComputePipeline({
+                layout: 'auto',
+                compute: {
+                    module: device.createShaderModule({
+                        code: `                                                                              
+                        @group(0) @binding(0) var<storage, read> a: array<f32>;                              
+                        @group(0) @binding(1) var<storage, read_write> output: array<f32>;                   
+                                                                                                             
+                        @compute @workgroup_size(256)                                                        
+                        fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {                       
+                            let index = global_id.x;                                                         
+                            if (index < arrayLength(&a)) {                                                   
+                                output[index] = a[index] * ${tensorB}f;                                      
+                            }                                                                                
+                        }                                                                                    
+                        `
+                    }),
+                    entryPoint: 'main'
+                }
+            });
+
+            bindGroup = device.createBindGroup({
+                layout: computePipeline.getBindGroupLayout(0),
+                entries: [
+                    { binding: 0, resource: { buffer: tensorA.buffer } },
+                    { binding: 1, resource: { buffer: result.buffer } },
+                ],
+            });
+        } else {
+            if (!tensorA.shape.data.every((dim, i) => dim === tensorB.shape.data[i])) {
+                throw new Error("Tensor shapes must match for element-wise multiplication");
+            }
+            result = await this.empty(tensorA.shape.data, {
+                usage: GPUBufferUsage.STORAGE |
+                    GPUBufferUsage.COPY_SRC
+            });
+            computePipeline = device.createComputePipeline({
+                layout: 'auto',
+                compute: {
+                    module: device.createShaderModule({
+                        code: `                                                                              
+                        @group(0) @binding(0) var<storage, read> a: array<f32>;                              
+                        @group(0) @binding(1) var<storage, read> b: array<f32>;                              
+                        @group(0) @binding(2) var<storage, read_write> output: array<f32>;                   
+                                                                                                             
+                        @compute @workgroup_size(256)                                                        
+                        fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {                       
+                            let index = global_id.x;                                                         
+                            if (index < arrayLength(&a)) {                                                   
+                                output[index] = a[index] * b[index];                                         
+                            }                                                                                
+                        }                                                                                    
+                        `
+                    }),
+                    entryPoint: 'main'
+                }
+            });
+
+            bindGroup = device.createBindGroup({
+                layout: computePipeline.getBindGroupLayout(0),
+                entries: [
+                    { binding: 0, resource: { buffer: tensorA.buffer } },
+                    { binding: 1, resource: { buffer: tensorB.buffer } },
+                    { binding: 2, resource: { buffer: result.buffer } },
+                ],
+            });
+        }
+
+        const commandEncoder = device.createCommandEncoder();
+        const passEncoder = commandEncoder.beginComputePass();
+        passEncoder.setPipeline(computePipeline);
+        passEncoder.setBindGroup(0, bindGroup);
+        passEncoder.dispatchWorkgroups(Math.ceil(tensorA.shape.size / 256));
+        passEncoder.end();
+
+        this.commands.push(commandEncoder.finish());
+
+        return result;
     }
-    
-    gt(tensor: Tensor, value: number): Promise<Tensor> {
-        throw new Error("Method not implemented.");
+
+    async gt(tensor: Tensor, value: number): Promise<Tensor> {
+        const { device } = await this.instance;
+        const result = await this.empty(tensor.shape.data, {
+            usage: GPUBufferUsage.STORAGE |
+                GPUBufferUsage.COPY_SRC
+        });
+
+        const computePipeline = device.createComputePipeline({
+            layout: 'auto',
+            compute: {
+                module: device.createShaderModule({
+                    code: `                                                                                  
+                    @group(0) @binding(0) var<storage, read> input: array<f32>;                              
+                    @group(0) @binding(1) var<storage, read_write> output: array<f32>;                       
+                                                                                                             
+                    @compute @workgroup_size(256)                                                            
+                    fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {                           
+                        let index = global_id.x;                                                             
+                        if (index < arrayLength(&input)) {                                                   
+                            output[index] = f32(input[index] > ${value}f);                                   
+                        }                                                                                    
+                    }                                                                                        
+                    `
+                }),
+                entryPoint: 'main'
+            }
+        });
+
+        const bindGroup = device.createBindGroup({
+            layout: computePipeline.getBindGroupLayout(0),
+            entries: [
+                { binding: 0, resource: { buffer: tensor.buffer } },
+                { binding: 1, resource: { buffer: result.buffer } },
+            ],
+        });
+
+        const commandEncoder = device.createCommandEncoder();
+        const passEncoder = commandEncoder.beginComputePass();
+        passEncoder.setPipeline(computePipeline);
+        passEncoder.setBindGroup(0, bindGroup);
+        passEncoder.dispatchWorkgroups(Math.ceil(tensor.shape.size / 256));
+        passEncoder.end();
+
+        this.commands.push(commandEncoder.finish());
+
+        return result;
     }
-    
-    transpose(tensor: Tensor): Promise<Tensor> {
-        throw new Error("Method not implemented.");
+
+    async transpose(tensor: Tensor): Promise<Tensor> {
+        const { device } = await this.instance;
+        if (tensor.shape.data.length !== 2) {
+            throw new Error("Transpose operation is only supported for 2D tensors");
+        }
+        const [rows, cols] = tensor.shape.data;
+        const result = await this.empty([cols, rows], {
+            usage: GPUBufferUsage.STORAGE |
+                GPUBufferUsage.COPY_SRC
+        });
+
+        const computePipeline = device.createComputePipeline({
+            layout: 'auto',
+            compute: {
+                module: device.createShaderModule({
+                    code: `                                                                                  
+                    @group(0) @binding(0) var<storage, read> input: array<f32>;                              
+                    @group(0) @binding(1) var<storage, read_write> output: array<f32>;                       
+                                                                                                             
+                    @compute @workgroup_size(16, 16)                                                         
+                    fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {                           
+                        let row = global_id.x;                                                               
+                        let col = global_id.y;                                                               
+                        let rows = ${rows}u;                                                                 
+                        let cols = ${cols}u;                                                                 
+                                                                                                             
+                        if (row < rows && col < cols) {                                                      
+                            output[col * rows + row] = input[row * cols + col];                              
+                        }                                                                                    
+                    }                                                                                        
+                    `
+                }),
+                entryPoint: 'main'
+            }
+        });
+
+        const bindGroup = device.createBindGroup({
+            layout: computePipeline.getBindGroupLayout(0),
+            entries: [
+                { binding: 0, resource: { buffer: tensor.buffer } },
+                { binding: 1, resource: { buffer: result.buffer } },
+            ],
+        });
+
+        const commandEncoder = device.createCommandEncoder();
+        const passEncoder = commandEncoder.beginComputePass();
+        passEncoder.setPipeline(computePipeline);
+        passEncoder.setBindGroup(0, bindGroup);
+        passEncoder.dispatchWorkgroups(Math.ceil(rows / 16), Math.ceil(cols / 16));
+        passEncoder.end();
+
+        this.commands.push(commandEncoder.finish());
+
+        return result;
     }
+
 
     async sum(tensor: Tensor): Promise<Tensor> {
         const { device } = await this.instance;
