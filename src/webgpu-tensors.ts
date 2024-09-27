@@ -113,6 +113,8 @@ export interface Tensors {
     tensor(array: NDArray, options?: Partial<TensorOptions> | undefined): Promise<Tensor>;
 
     matmul(tensorA: Tensor, tensorB: Tensor): Promise<Tensor>;
+    sub(tensorA: Tensor, tensorB: Tensor): Promise<Tensor>;
+    pow(tensor: Tensor, exponent: number): Promise<Tensor>;
 
     maximum(tensor: Tensor, value: number): Promise<Tensor>;
 
@@ -322,6 +324,101 @@ class WebGPUTensors implements Tensors {
                         let index = global_id.x;
                         if (index < arrayLength(&input)) {
                             output[index] = max(input[index], ${value}f);
+                        }
+                    }
+                    `
+                }),
+                entryPoint: 'main'
+            }
+        });
+
+        const bindGroup = device.createBindGroup({
+            layout: computePipeline.getBindGroupLayout(0),
+            entries: [
+                { binding: 0, resource: { buffer: tensor.buffer } },
+                { binding: 1, resource: { buffer: result.buffer } },
+            ],
+        });
+
+        const commandEncoder = device.createCommandEncoder();
+        const passEncoder = commandEncoder.beginComputePass();
+        passEncoder.setPipeline(computePipeline);
+        passEncoder.setBindGroup(0, bindGroup);
+        passEncoder.dispatchWorkgroups(Math.ceil(tensor.shape.size / 256));
+        passEncoder.end();
+
+        this.commands.push(commandEncoder.finish());
+
+        return result;
+    }
+
+    async sub(tensorA: Tensor, tensorB: Tensor): Promise<Tensor> {
+        const { device } = await this.instance;
+        if (!tensorA.shape.data.every((dim, i) => dim === tensorB.shape.data[i])) {
+            throw new Error("Tensor shapes must match for subtraction");
+        }
+        const result = await this.empty(tensorA.shape.data, { usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
+
+        const computePipeline = device.createComputePipeline({
+            layout: 'auto',
+            compute: {
+                module: device.createShaderModule({
+                    code: `
+                    @group(0) @binding(0) var<storage, read> a: array<f32>;
+                    @group(0) @binding(1) var<storage, read> b: array<f32>;
+                    @group(0) @binding(2) var<storage, read_write> output: array<f32>;
+
+                    @compute @workgroup_size(256)
+                    fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+                        let index = global_id.x;
+                        if (index < arrayLength(&a)) {
+                            output[index] = a[index] - b[index];
+                        }
+                    }
+                    `
+                }),
+                entryPoint: 'main'
+            }
+        });
+
+        const bindGroup = device.createBindGroup({
+            layout: computePipeline.getBindGroupLayout(0),
+            entries: [
+                { binding: 0, resource: { buffer: tensorA.buffer } },
+                { binding: 1, resource: { buffer: tensorB.buffer } },
+                { binding: 2, resource: { buffer: result.buffer } },
+            ],
+        });
+
+        const commandEncoder = device.createCommandEncoder();
+        const passEncoder = commandEncoder.beginComputePass();
+        passEncoder.setPipeline(computePipeline);
+        passEncoder.setBindGroup(0, bindGroup);
+        passEncoder.dispatchWorkgroups(Math.ceil(tensorA.shape.size / 256));
+        passEncoder.end();
+
+        this.commands.push(commandEncoder.finish());
+
+        return result;
+    }
+
+    async pow(tensor: Tensor, exponent: number): Promise<Tensor> {
+        const { device } = await this.instance;
+        const result = await this.empty(tensor.shape.data, { usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
+
+        const computePipeline = device.createComputePipeline({
+            layout: 'auto',
+            compute: {
+                module: device.createShaderModule({
+                    code: `
+                    @group(0) @binding(0) var<storage, read> input: array<f32>;
+                    @group(0) @binding(1) var<storage, read_write> output: array<f32>;
+
+                    @compute @workgroup_size(256)
+                    fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+                        let index = global_id.x;
+                        if (index < arrayLength(&input)) {
+                            output[index] = pow(input[index], ${exponent}f);
                         }
                     }
                     `
