@@ -1,4 +1,4 @@
-import t, { Tensor } from '../src/webgpu-tensors'
+import t, { Tensor, NN } from '../src/webgpu-tensors'
 
 // Create a simple 2-layer neural network
 class SimpleNN {
@@ -18,7 +18,7 @@ class SimpleNN {
   
     async forward(x: Tensor): Promise<Tensor> {
         const h = await t.matmul(x, this.w1);
-        const h_relu = await t.relu(t, h);
+        const h_relu = await NN.relu(t, h);
         return await t.matmul(h_relu, this.w2);
     }
   }
@@ -39,8 +39,9 @@ for (let epoch = 0; epoch < epochs; epoch++) {
   let yPred = await model.forward(X);
 
   // Compute loss (Mean Squared Error)
-  yPred = await t.sub(y);
-  const loss = t.pow(yPred, 2).mean();
+  yPred = await t.sub(yPred, y);
+  let loss = await t.pow(yPred, 2)
+  loss = await t.mean(loss);
 
   // Backward pass (assuming we have autograd functionality)
   loss.backward();
