@@ -314,14 +314,14 @@ class WebGPUTensors implements Tensors {
     }
 
     async rand(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor> {
-        const { usage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST, mappedAtCreation = true } = options || {};
+        const { usage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC, mappedAtCreation = true } = options || {};
         let tensor = await this.create(new Size(shape), { usage, mappedAtCreation });
-        const array = Array.from(new Array(tensor.size), () => Math.random());
+        const array = Array.from(new Array(tensor.shape.size), () => Math.random());
         return tensor.set(array);
     }
 
     async randn(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor> {
-        const { usage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST, mappedAtCreation = true } = options || {};
+        const { usage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC, mappedAtCreation = true } = options || {};
         let tensor = await this.create(new Size(shape), { usage, mappedAtCreation });
 
         // Box-Muller transform
@@ -332,7 +332,7 @@ class WebGPUTensors implements Tensors {
             return z0;
         };
 
-        const array = Array.from(new Array(tensor.size), () => boxMullerTransform());
+        const array = Array.from(new Array(tensor.shape.size), () => boxMullerTransform());
         return tensor.set(array);
     }
 
@@ -465,8 +465,11 @@ class WebGPUTensors implements Tensors {
         passEncoder.end();
 
         this.commands.push(commandEncoder.finish());
-
-        return result;
+        await this.compute();
+        this.reset();
+        const read = await this.empty(result.shape.data);
+        await this.copy(result, read);
+        return read;
     }
 
     async relu(x: Tensor): Promise<Tensor> {
@@ -519,8 +522,11 @@ class WebGPUTensors implements Tensors {
         passEncoder.end();
 
         this.commands.push(commandEncoder.finish());
-
-        return result;
+        await this.compute();
+        this.reset();
+        const read = await this.empty(result.shape.data);
+        await this.copy(result, read);
+        return read;
     }
 
     async pow(tensor: Tensor, exponent: number): Promise<Tensor> {
@@ -564,8 +570,11 @@ class WebGPUTensors implements Tensors {
         passEncoder.end();
 
         this.commands.push(commandEncoder.finish());
-
-        return result;
+        await this.compute();
+        this.reset();
+        const read = await this.empty(result.shape.data);
+        await this.copy(result, read);
+        return read;
     }
 
     async copy(tensorSource: Tensor, tensorDestination: Tensor) {
@@ -629,7 +638,11 @@ class WebGPUTensors implements Tensors {
 
         this.commands.push(commandEncoder.finish());
 
-        return result;
+        await this.compute();
+        this.reset();
+        const read = await this.empty(result.shape.data);
+        await this.copy(result, read);
+        return read;
     }
 
     async softmax(tensor: Tensor): Promise<Tensor> {
@@ -928,7 +941,6 @@ class WebGPUTensors implements Tensors {
             await this.copy(source, staging);
         }
         await this.compute();
-        await (await this.instance).device.queue.onSubmittedWorkDone();
         this.commands = [];
         return staging;
     }
@@ -948,7 +960,9 @@ class WebGPUTensors implements Tensors {
             return (async () => {
                 if (d instanceof GPUTensor) {
                     const staging = await this.getStaging(d);
+                    
                     return staging.asyncToString();
+
                 }
 
                 return d.toString?.() || d;
