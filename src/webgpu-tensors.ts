@@ -201,8 +201,11 @@ class WebGPUTensors implements Tensors {
         passEncoder.end();
 
         this.commands.push(commandEncoder.finish());
-
-        return result;
+        await this.compute();
+        this.reset();
+        const read = await this.empty(result.shape.data);
+        await this.copy(result, read);
+        return read;
     }
 
     async max(tensor: Tensor): Promise<Tensor> {
