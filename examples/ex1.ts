@@ -23,3 +23,9 @@ t.print(`Device tensor is stored on: ${tensor.device}`);
 x = await t.empty([3, 4, 5]);
 t.print(x.size());
 t.print(x.size(1));
+
+t.reset();
+x = await t.rand([4, 4]);
+let y = await t.rand([4, 4]);
+y = await t.matmul(x, y);
+t.print('matmul', y);
