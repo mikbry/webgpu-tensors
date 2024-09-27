@@ -1,18 +1,15 @@
 import torch
 import torch.nn as nn
-import torch.optim as optim
 
 # Create a simple 2-layer neural network
-class SimpleNN(nn.Module):
+class SimpleNN:
     def __init__(self, input_size, hidden_size, output_size):
-        super(SimpleNN, self).__init__()
-        self.fc1 = nn.Linear(input_size, hidden_size)
-        self.fc2 = nn.Linear(hidden_size, output_size)
-        self.relu = nn.ReLU()
+        self.w1 = torch.randn(input_size, hidden_size)
+        self.w2 = torch.randn(hidden_size, output_size)
 
     def forward(self, x):
-        h = self.relu(self.fc1(x))
-        return self.fc2(h)
+        h = torch.relu(torch.matmul(x, self.w1))
+        return torch.matmul(h, self.w2)
 
 # Generate random data
 X = torch.rand(5, 10)
@@ -21,24 +18,26 @@ y = torch.rand(5, 1)
 # Initialize the model
 model = SimpleNN(10, 5, 1)
 
-# Define loss function and optimizer
-criterion = nn.MSELoss()
-optimizer = optim.SGD(model.parameters(), lr=0.01)
-
 # Training loop
+learning_rate = 0.01
 epochs = 100
 
 for epoch in range(epochs):
     # Forward pass
-    y_pred = model(X)
+    y_pred = model.forward(X)
 
-    # Compute loss
-    loss = criterion(y_pred, y)
+    # Compute loss (Mean Squared Error)
+    loss = ((y_pred - y) ** 2).mean()
 
-    # Backward pass and optimize
-    optimizer.zero_grad()
-    loss.backward()
-    optimizer.step()
+    # Backward pass (manual gradient computation)
+    grad_y_pred = 2.0 * (y_pred - y) / y.numel()
+    grad_w2 = torch.matmul(torch.relu(torch.matmul(X, model.w1)).t(), grad_y_pred)
+    grad_h = torch.matmul(grad_y_pred, model.w2.t())
+    grad_w1 = torch.matmul(X.t(), grad_h * (torch.matmul(X, model.w1) > 0).float())
+
+    # Update weights
+    model.w1 -= learning_rate * grad_w1
+    model.w2 -= learning_rate * grad_w2
 
     # Print progress
     if epoch % 10 == 0:
