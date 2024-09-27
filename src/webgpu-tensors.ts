@@ -621,6 +621,19 @@ class WebGPUTensors implements Tensors {
         return result;
     }
 
+        
+    mul(tensorA: Tensor, tensorB: Tensor | number): Promise<Tensor> {
+        throw new Error("Method not implemented.");
+    }
+    
+    gt(tensor: Tensor, value: number): Promise<Tensor> {
+        throw new Error("Method not implemented.");
+    }
+    
+    transpose(tensor: Tensor): Promise<Tensor> {
+        throw new Error("Method not implemented.");
+    }
+
     async getStaging(source: GPUTensor) {
         let staging = source;
         if (!source.readable) {
