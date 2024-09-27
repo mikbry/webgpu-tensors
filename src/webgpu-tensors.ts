@@ -362,7 +362,7 @@ class WebGPUTensors implements Tensors {
             throw new Error(error);
         }
 
-        const destination = await this.empty([inputShape[0], otherShape[1]], { usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
+        const destination = await this.empty([inputShape[0], otherShape[1]]);
         const { device } = await this.instance;
         const computePipeline = device.createComputePipeline({
             layout: 'auto',
@@ -416,8 +416,6 @@ class WebGPUTensors implements Tensors {
         passEncoder.end();
 
         this.commands.push(commandEncoder.finish());
-
-        // await this.compute();  // Execute the computation immediately
 
         return destination;
     }
