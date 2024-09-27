@@ -439,7 +439,7 @@ class WebGPUTensors implements Tensors {
                     @group(0) @binding(0) var<storage, read> input: array<f32>;
                     @group(0) @binding(1) var<storage, read_write> output: array<f32>;
 
-                    @compute @workgroup_size(256)
+                    @compute @workgroup_size(64)
                     fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
                         let index = global_id.x;
                         if (index < arrayLength(&input)) {
@@ -464,7 +464,11 @@ class WebGPUTensors implements Tensors {
         const passEncoder = commandEncoder.beginComputePass();
         passEncoder.setPipeline(computePipeline);
         passEncoder.setBindGroup(0, bindGroup);
-        passEncoder.dispatchWorkgroups(Math.ceil(tensor.shape.size / 256));
+        
+        const workgroupSize = 64;
+        const workgroups = Math.ceil(tensor.shape.size / workgroupSize);
+        passEncoder.dispatchWorkgroups(workgroups);
+        
         passEncoder.end();
 
         this.commands.push(commandEncoder.finish());
