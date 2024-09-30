@@ -33,7 +33,7 @@ epochs = 100
 for epoch in range(epochs + 1):
     # Forward pass
     y_pred = model.forward(X)
-    # Compute loss (Mean Squared Error)
+    # Compute loss (Mean Squared Error MSE)
     loss = ((y_pred - y) ** 2).mean()
 
     # Backward pass (manual gradient computation)

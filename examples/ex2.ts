@@ -39,7 +39,7 @@ for (let epoch = 0; epoch <= epochs; epoch++) {
     // Forward pass
     let yPred = await model.forward(X);
 
-    // Compute loss (Mean Squared Error)
+    // Compute loss (Mean Squared Error MSE)
     yPred = await t.sub(yPred, y); 
     const loss = await t.mean(await t.pow(yPred, 2));
 
