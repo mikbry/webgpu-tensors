@@ -1,5 +1,11 @@
+import time
+
+start = time.perf_counter() * 1000
+
 import torch
-import torch.nn as nn
+
+print('Train a simple 2-layer neural network')
+
 
 # Create a simple 2-layer neural network
 class SimpleNN:
@@ -11,6 +17,7 @@ class SimpleNN:
         x_w1 = torch.matmul(x, self.w1)
         h = torch.relu(x_w1)
         return torch.matmul(h, self.w2)
+
 
 # Generate random data
 X = torch.rand(5, 10)
@@ -43,4 +50,5 @@ for epoch in range(epochs + 1):
     if epoch % 10 == 0:
         print(f"Epoch {epoch}, Loss: {loss.item()}")
 
-print('Training complete!')
+end = time.perf_counter() * 1000
+print('Training complete! in', round(end - start), 'ms')

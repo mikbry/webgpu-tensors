@@ -1,5 +1,6 @@
 import t, { Tensor } from '../src/webgpu-tensors'
 
+await t.print('Train a simple 2-layer neural network');
 // Create a simple 2-layer neural network
 class SimpleNN {
     w1: Tensor;
@@ -23,7 +24,7 @@ class SimpleNN {
         return result;
     }
 }
-
+const start = performance.now();
 // Generate random data
 const X = await t.rand([5, 10]);
 const y = await t.rand([5, 1]);
@@ -39,29 +40,25 @@ for (let epoch = 0; epoch <= epochs; epoch++) {
     let yPred = await model.forward(X);
 
     // Compute loss (Mean Squared Error)
-    yPred = await t.sub(yPred, y);
-
-    let loss = await t.pow(yPred, 2)
-    loss = await t.mean(loss);
+    yPred = await t.sub(yPred, y); 
+    const loss = await t.mean(await t.pow(yPred, 2));
 
     // Backward pass (manual gradient computation)
-    const grad_y_pred = await t.sub(yPred, y);
-    const grad_y_pred_scaled = await t.mul(grad_y_pred, 2.0 / y.numel());
-    const h_relu = await t.relu(await t.matmul(X, model.w1));
-    const grad_w2 = await t.matmul(await t.transpose(h_relu), grad_y_pred_scaled);
-    const grad_h = await t.matmul(grad_y_pred_scaled, await t.transpose(model.w2));
-    const h = await t.matmul(X, model.w1);
-    const mask = await t.gt(h, 0);
-    const grad_w1 = await t.matmul(await t.transpose(X), await t.mul(grad_h, mask));
+    const gradYPred = await t.mul(await t.sub(yPred, y), 2.0 / y.numel());
+    const hRelu = await t.relu(await t.matmul(X, model.w1));
+    const gradW2 = await t.matmul(await t.transpose(hRelu), gradYPred);
+    const gradH = await t.matmul(gradYPred, await t.transpose(model.w2));
+    const mask = await t.gt(await t.matmul(X, model.w1), 0);
+    const gradW1 = await t.matmul(await t.transpose(X), await t.mul(gradH, mask));
 
     // Update weights
-    model.w1 = await t.sub(model.w1, await t.mul(grad_w1, learningRate));
-    model.w2 = await t.sub(model.w2, await t.mul(grad_w2, learningRate));
+    model.w1 = await t.sub(model.w1, await t.mul(gradW1, learningRate));
+    model.w2 = await t.sub(model.w2, await t.mul(gradW2, learningRate));
 
     // Print progress
     if (epoch % 10 === 0) {
         await t.print(`Epoch ${epoch}, Loss: ${await t.item(loss)}`);
     }
 }
-
-t.print('Training complete!');
+const end = performance.now();
+await t.print('Training complete! in', (end - start), 'ms');
