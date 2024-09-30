@@ -1,6 +1,6 @@
-import init from '../src/webgpu-tensors'
+import t from '../src/webgpu-tensors';
 
-const t = await init();
+await t.init();
 let x = t.rand([5, 3]);
 await t.print(x);
 

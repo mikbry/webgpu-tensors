@@ -1,6 +1,6 @@
-import init, { Tensor } from '../src/webgpu-tensors'
+import t, { Tensor } from '../src/webgpu-tensors'
 
-const t = await init();
+// await t.init();
 await t.print('Train a simple 2-layer neural network');
 // Create a simple 2-layer neural network
 class SimpleNN {

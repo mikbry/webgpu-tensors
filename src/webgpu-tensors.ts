@@ -60,6 +60,7 @@ export interface Tensor {
     dtype: DType;
     device: Device;
     readable: boolean;
+    
     readFloat32(options?: { mode: GPUFlagsConstant }): Promise<Float32NestedArray>;
     size(dim?: number): Size | number;
     numel(): number;
@@ -107,6 +108,7 @@ type Float32NestedArray = Array<Float32NestedArray> | Float32Array;
 type Shape = number[];
 
 export interface Tensors {
+    init(device?: Device): Promise<void>;
     empty(shape: Shape, options?: Partial<TensorOptions> | undefined): Tensor;
     ones(shape: Shape, options?: Partial<TensorOptions> | undefined): Tensor;
     rand(shape: Shape, options?: Partial<TensorOptions> | undefined): Tensor;
@@ -130,12 +132,12 @@ export interface Tensors {
 
     sigmoid(tensor: Tensor): Tensor;
 
-    reset(): void;
-    compute(): void;
     copy(tensorSource: Tensor, tensorDestination: Tensor): void;
 
     item(tensor: Tensor): Promise<number>;
 
+    reset(): void;
+    compute(): void;
     destroy(): void;
 
     print(...data: unknown[]): Promise<void>;
@@ -161,7 +163,10 @@ class WebGPUTensors implements Tensors {
         this.commands = [];
     }
 
-    async init(): Promise<WebGPUInstance> {
+    async init(device: Device = Device.GPU) {
+        if (device !== Device.GPU) {
+            throw new Error("Unknown device " + device);
+        }
         if (!("gpu" in navigator)) {
             throw new Error("WebGPU not supported on this browser.");
         }
@@ -176,7 +181,7 @@ class WebGPUTensors implements Tensors {
 
             WebGPUTensors._instance = { device };
         }
-        return WebGPUTensors._instance;
+        // return WebGPUTensors._instance;
     }
 
     get instance() {
@@ -737,15 +742,14 @@ class GPUTensor implements Tensor {
 }
 
 
+let tensors: Tensors | undefined;
 
-export default async function (device: Device = Device.GPU): Promise<Tensors> {
-    let tensors: Tensors | undefined;
+export default (function device(device: Device = Device.GPU): Tensors {
     if (device === Device.GPU) {
-
         tensors = WebGPUTensors.create();
-        await (tensors as WebGPUTensors).init();
+        (tensors as WebGPUTensors).init();
     } else {
         throw new Error("Unknown device " + device);
     }
     return tensors;
-};
+})();
