@@ -1,5 +1,5 @@
-import './style.css'
-import t from './webgpu-tensors'
+import './style.css';
+import t from './webgpu-tensors';
 
 /* const writeTensor = await t.tensor([[0, 1, 2, 3]]);
 console.log('writeTensor', writeTensor);

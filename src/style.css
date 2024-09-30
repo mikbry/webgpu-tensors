@@ -13,7 +13,8 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-html, body{
+html,
+body {
   margin: 0;
   height: 100%;
 }
