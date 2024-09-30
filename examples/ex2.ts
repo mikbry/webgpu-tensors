@@ -1,5 +1,6 @@
-import t, { Tensor } from '../src/webgpu-tensors'
+import init, { Tensor } from '../src/webgpu-tensors'
 
+const t = await init();
 await t.print('Train a simple 2-layer neural network');
 // Create a simple 2-layer neural network
 class SimpleNN {
@@ -12,22 +13,22 @@ class SimpleNN {
     }
 
     static async init(inputSize: number, hiddenSize: number, outputSize: number) {
-        const w1 = await t.randn([inputSize, hiddenSize]);
-        const w2 = await t.randn([hiddenSize, outputSize]);
+        const w1 = t.randn([inputSize, hiddenSize]);
+        const w2 = t.randn([hiddenSize, outputSize]);
         return new SimpleNN(w1, w2);
     }
 
     async forward(x: Tensor): Promise<Tensor> {
-        const xW1 = await t.matmul(x, this.w1);
-        const h = await t.relu(xW1);
-        const result = await t.matmul(h, this.w2);
+        const xW1 = t.matmul(x, this.w1);
+        const h = t.relu(xW1);
+        const result = t.matmul(h, this.w2);
         return result;
     }
 }
 const start = performance.now();
 // Generate random data
-const X = await t.rand([5, 10]);
-const y = await t.rand([5, 1]);
+const X = t.rand([5, 10]);
+const y = t.rand([5, 1]);
 // Initialize the model
 const model = await SimpleNN.init(10, 5, 1);
 
@@ -40,20 +41,20 @@ for (let epoch = 0; epoch <= epochs; epoch++) {
     let yPred = await model.forward(X);
 
     // Compute loss (Mean Squared Error MSE)
-    yPred = await t.sub(yPred, y); 
-    const loss = await t.mean(await t.pow(yPred, 2));
+    yPred = t.sub(yPred, y);
+    const loss = t.mean(t.pow(yPred, 2));
 
     // Backward pass (manual gradient computation)
-    const gradYPred = await t.mul(await t.sub(yPred, y), 2.0 / y.numel());
-    const hRelu = await t.relu(await t.matmul(X, model.w1));
-    const gradW2 = await t.matmul(await t.transpose(hRelu), gradYPred);
-    const gradH = await t.matmul(gradYPred, await t.transpose(model.w2));
-    const mask = await t.gt(await t.matmul(X, model.w1), 0);
-    const gradW1 = await t.matmul(await t.transpose(X), await t.mul(gradH, mask));
+    const gradYPred = t.mul(t.sub(yPred, y), 2.0 / y.numel());
+    const hRelu = t.relu(t.matmul(X, model.w1));
+    const gradW2 = t.matmul(t.transpose(hRelu), gradYPred);
+    const gradH = t.matmul(gradYPred, t.transpose(model.w2));
+    const mask = t.gt(t.matmul(X, model.w1), 0);
+    const gradW1 = t.matmul(t.transpose(X), t.mul(gradH, mask));
 
     // Update weights
-    model.w1 = await t.sub(model.w1, await t.mul(gradW1, learningRate));
-    model.w2 = await t.sub(model.w2, await t.mul(gradW2, learningRate));
+    model.w1 = t.sub(model.w1, t.mul(gradW1, learningRate));
+    model.w2 = t.sub(model.w2, t.mul(gradW2, learningRate));
 
     // Print progress
     if (epoch % 10 === 0) {

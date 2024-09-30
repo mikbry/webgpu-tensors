@@ -96,6 +96,7 @@ export enum DType {
 
 export enum Device {
     GPU = 'GPU',
+    CPU = 'CPU',
 }
 
 
@@ -106,32 +107,32 @@ type Float32NestedArray = Array<Float32NestedArray> | Float32Array;
 type Shape = number[];
 
 export interface Tensors {
-    empty(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor>;
-    ones(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor>;
-    rand(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor>;
-    randn(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor>;
-    zeros(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor>;
-    tensor(array: NestedArray<number>, options?: Partial<TensorOptions> | undefined): Promise<Tensor>;
+    empty(shape: Shape, options?: Partial<TensorOptions> | undefined): Tensor;
+    ones(shape: Shape, options?: Partial<TensorOptions> | undefined): Tensor;
+    rand(shape: Shape, options?: Partial<TensorOptions> | undefined): Tensor;
+    randn(shape: Shape, options?: Partial<TensorOptions> | undefined): Tensor;
+    zeros(shape: Shape, options?: Partial<TensorOptions> | undefined): Tensor;
+    tensor(array: NestedArray<number>, options?: Partial<TensorOptions> | undefined): Tensor;
 
-    matmul(tensorA: Tensor, tensorB: Tensor): Promise<Tensor>;
-    sub(tensorA: Tensor, tensorB: Tensor): Promise<Tensor>;
-    pow(tensor: Tensor, exponent: number): Promise<Tensor>;
-    mul(tensorA: Tensor, tensorB: Tensor | number): Promise<Tensor>;
-    gt(tensor: Tensor, value: number): Promise<Tensor>;
-    transpose(tensor: Tensor): Promise<Tensor>;
+    matmul(tensorA: Tensor, tensorB: Tensor): Tensor;
+    sub(tensorA: Tensor, tensorB: Tensor): Tensor;
+    pow(tensor: Tensor, exponent: number): Tensor;
+    mul(tensorA: Tensor, tensorB: Tensor | number): Tensor;
+    gt(tensor: Tensor, value: number): Tensor;
+    transpose(tensor: Tensor): Tensor;
 
-    maximum(tensor: Tensor, value: number): Promise<Tensor>;
-    relu(x: Tensor): Promise<Tensor>;
+    maximum(tensor: Tensor, value: number): Tensor;
+    relu(x: Tensor): Tensor;
 
-    max(tensor: Tensor): Promise<Tensor>;
+    max(tensor: Tensor): Tensor;
 
-    mean(tensor: Tensor): Promise<Tensor>;
+    mean(tensor: Tensor): Tensor;
 
-    sigmoid(tensor: Tensor): Promise<Tensor>;
+    sigmoid(tensor: Tensor): Tensor;
 
     reset(): void;
-    compute(): Promise<void>;
-    copy(tensorSource: Tensor, tensorDestination: Tensor): Promise<void>;
+    compute(): void;
+    copy(tensorSource: Tensor, tensorDestination: Tensor): void;
 
     item(tensor: Tensor): Promise<number>;
 
@@ -179,18 +180,22 @@ class WebGPUTensors implements Tensors {
     }
 
     get instance() {
-        return (async () => {
+        /* return (async () => {
             return this.init();
-        })();
+        })(); */
+        if (!WebGPUTensors._instance) {
+            throw new Error("Tensors no instance initialized.");
+        }
+        return WebGPUTensors._instance;
     }
 
     destroy() {
         WebGPUTensors._instance?.device.destroy();
     }
 
-    async createTensor(shape: Size, options: TensorOptions) {
+    createTensor(shape: Size, options: TensorOptions) {
         const { usage, mappedAtCreation, readable } = options;
-        const { device } = await this.instance || {};
+        const { device } = this.instance;
         let size = shape.size * F32SIZE;
         return new GPUTensor(device.createBuffer({
             mappedAtCreation,
@@ -199,37 +204,37 @@ class WebGPUTensors implements Tensors {
         }), shape, readable);
     }
 
-    async resultTensor(shape: Shape, options?: Partial<TensorOptions> | undefined) {
+    resultTensor(shape: Shape, options?: Partial<TensorOptions> | undefined) {
         const { usage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC, mappedAtCreation = false } = options || {};
         return this.createTensor(new Size(shape), { usage, mappedAtCreation, readable: false });
     }
 
-    async buildTensor(buildArray: (i: number) => number[], shape: Shape, options?: Partial<TensorOptions> | undefined) {
+    buildTensor(buildArray: (i: number) => number[], shape: Shape, options?: Partial<TensorOptions> | undefined) {
         const { usage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC, mappedAtCreation = true } = options || {};
-        let tensor = await this.createTensor(new Size(shape), { usage, mappedAtCreation, readable: false });
+        let tensor = this.createTensor(new Size(shape), { usage, mappedAtCreation, readable: false });
         return tensor.set(buildArray(tensor.shape.size));
     }
 
-    async empty(shape: Shape, options?: Partial<TensorOptions> | undefined) {
+    empty(shape: Shape, options?: Partial<TensorOptions> | undefined) {
         const { usage = GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST, mappedAtCreation = false } = options || {};
         return this.createTensor(new Size(shape), { usage, mappedAtCreation, readable: true });
     }
 
-    async tensor(array: NestedArray<number>, options?: Partial<TensorOptions> | undefined): Promise<Tensor> {
+    tensor(array: NestedArray<number>, options?: Partial<TensorOptions> | undefined) {
         let shape = buildShapeFromNestedArray(array);
         let stridedArray = (shape.length === 1 ? array : array.flat(shape.length as 10)) as number[];
         return this.buildTensor(() => stridedArray, shape.data, options);
     }
 
-    async ones(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor> {
+    ones(shape: Shape, options?: Partial<TensorOptions> | undefined) {
         return this.buildTensor((size) => new Array(size).fill(1), shape, options);
     }
 
-    async rand(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor> {
+    rand(shape: Shape, options?: Partial<TensorOptions> | undefined) {
         return this.buildTensor((size) => Array.from(new Array(size), () => Math.random()), shape, options);
     }
 
-    async randn(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor> {
+    randn(shape: Shape, options?: Partial<TensorOptions> | undefined) {
         // Box-Muller transform
         const boxMullerTransform = () => {
             const u1 = Math.random();
@@ -240,23 +245,23 @@ class WebGPUTensors implements Tensors {
         return this.buildTensor((size) => Array.from(new Array(size), () => boxMullerTransform()), shape, options);
     }
 
-    async zeros(shape: Shape, options?: Partial<TensorOptions> | undefined): Promise<Tensor> {
+    zeros(shape: Shape, options?: Partial<TensorOptions> | undefined) {
         return this.buildTensor((size) => new Array(size).fill(0), shape, options);
     }
 
-    async compute() {
+    compute() {
         if (this.hasComputeOnce && this.commands.length === 0) {
             return;
         }
-        const instance = await this.instance;
+        const instance = this.instance;
         instance?.device.queue.submit(this.commands);
         this.hasComputeOnce = true;
         this.reset();
     }
 
-    async createKernel(resultShape: Shape, entries: any[], code: string, workGroupCounts: number[]) {
-        const result = await this.resultTensor(resultShape);
-        const { device } = await this.instance;
+    createKernel(resultShape: Shape, entries: any[], code: string, workGroupCounts: number[]) {
+        const result = this.resultTensor(resultShape);
+        const { device } = this.instance;
         const computePipeline = device.createComputePipeline({
             layout: 'auto',
             compute: {
@@ -291,7 +296,7 @@ class WebGPUTensors implements Tensors {
         return result;
     }
 
-    async matmul(input: Tensor, other: Tensor) {
+    matmul(input: Tensor, other: Tensor) {
         const inputShape = input.shape.data;
         const otherShape = other.shape.data;
 
@@ -334,7 +339,7 @@ class WebGPUTensors implements Tensors {
     }
 
 
-    async maximum(tensor: Tensor, value: number): Promise<Tensor> {
+    maximum(tensor: Tensor, value: number) {
         return this.createKernel(
             tensor.shape.data,
             [{ binding: 0, resource: { buffer: tensor.buffer } }],
@@ -354,11 +359,11 @@ class WebGPUTensors implements Tensors {
         );
     }
 
-    async relu(x: Tensor): Promise<Tensor> {
+    relu(x: Tensor) {
         return this.maximum(x, 0);
     }
 
-    async sub(tensorA: Tensor, tensorB: Tensor): Promise<Tensor> {
+    sub(tensorA: Tensor, tensorB: Tensor) {
         if (!tensorA.shape.data.every((dim, i) => dim === tensorB.shape.data[i])) {
             throw new Error("Tensor shapes must match for subtraction");
         }
@@ -384,7 +389,7 @@ class WebGPUTensors implements Tensors {
         );
     }
 
-    async pow(tensor: Tensor, exponent: number): Promise<Tensor> {
+    pow(tensor: Tensor, exponent: number) {
         return this.createKernel(
             tensor.shape.data,
             [{ binding: 0, resource: { buffer: tensor.buffer } }],
@@ -404,7 +409,7 @@ class WebGPUTensors implements Tensors {
         );
     }
 
-    async mean(tensor: Tensor): Promise<Tensor> {
+    mean(tensor: Tensor) {
         return this.createKernel(
             [1],
             [{ binding: 0, resource: { buffer: tensor.buffer } }],
@@ -428,7 +433,7 @@ class WebGPUTensors implements Tensors {
         );
     }
 
-    async softmax(tensor: Tensor): Promise<Tensor> {
+    softmax(tensor: Tensor) {
         return this.createKernel(
             tensor.shape.data,
             [{ binding: 0, resource: { buffer: tensor.buffer } }],
@@ -458,7 +463,7 @@ class WebGPUTensors implements Tensors {
         );
     }
 
-    async mul(tensorA: Tensor, tensorB: Tensor | number): Promise<Tensor> {
+    mul(tensorA: Tensor, tensorB: Tensor | number) {
         if (typeof tensorB === 'number') {
             return this.createKernel(
                 tensorA.shape.data,
@@ -503,7 +508,7 @@ class WebGPUTensors implements Tensors {
         }
     }
 
-    async gt(tensor: Tensor, value: number): Promise<Tensor> {
+    gt(tensor: Tensor, value: number) {
         return this.createKernel(
             tensor.shape.data,
             [{ binding: 0, resource: { buffer: tensor.buffer } }],
@@ -523,7 +528,7 @@ class WebGPUTensors implements Tensors {
         );
     }
 
-    async transpose(tensor: Tensor): Promise<Tensor> {
+    transpose(tensor: Tensor) {
         if (tensor.shape.data.length !== 2) {
             throw new Error("Transpose operation is only supported for 2D tensors");
         }
@@ -552,7 +557,7 @@ class WebGPUTensors implements Tensors {
     }
 
 
-    async sigmoid(tensor: Tensor): Promise<Tensor> {
+    sigmoid(tensor: Tensor) {
         return this.createKernel(
             tensor.shape.data,
             [{ binding: 0, resource: { buffer: tensor.buffer } }],
@@ -572,7 +577,7 @@ class WebGPUTensors implements Tensors {
         );
     }
 
-    async max(tensor: Tensor): Promise<Tensor> {
+    max(tensor: Tensor) {
         return this.createKernel(
             [1],
             [{ binding: 0, resource: { buffer: tensor.buffer } }],
@@ -596,7 +601,7 @@ class WebGPUTensors implements Tensors {
         );
     }
 
-    async sum(tensor: Tensor): Promise<Tensor> {
+    sum(tensor: Tensor) {
         return this.createKernel(
             [1],
             [{ binding: 0, resource: { buffer: tensor.buffer } }],
@@ -620,8 +625,8 @@ class WebGPUTensors implements Tensors {
         );
     }
 
-    async copy(tensorSource: Tensor, tensorDestination: Tensor) {
-        const { device } = await this.instance;
+    copy(tensorSource: Tensor, tensorDestination: Tensor) {
+        const { device } = this.instance;
         const copyEncoder = device.createCommandEncoder();
         if ("buffer" in tensorSource)
             copyEncoder.copyBufferToBuffer(
@@ -698,7 +703,7 @@ class GPUTensor implements Tensor {
         return Device.GPU;
     }
 
-    async set(array: Array<number>) {
+    set(array: Array<number>) {
         if (array) {
             const arrayBufferTensor = this.buffer.getMappedRange();
             new Float32Array(arrayBufferTensor).set(array);
@@ -731,11 +736,16 @@ class GPUTensor implements Tensor {
     }
 }
 
-let tensors: Tensors | undefined;
 
-export default (function (): Tensors {
-    if (!tensors) {
+
+export default async function (device: Device = Device.GPU): Promise<Tensors> {
+    let tensors: Tensors | undefined;
+    if (device === Device.GPU) {
+
         tensors = WebGPUTensors.create();
+        await (tensors as WebGPUTensors).init();
+    } else {
+        throw new Error("Unknown device " + device);
     }
     return tensors;
-})();
+};
