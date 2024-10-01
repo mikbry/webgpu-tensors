@@ -1,0 +1,8 @@
+{
+    "tasks": {
+      "test": "vitest",
+      "coverage": "vitest run --coverage"
+    },
+    "unstable": ["sloppy-imports", "webgpu"],
+    "imports": { "jsdom": "npm:jsdom@^25.0.0", "vitest": "npm:vitest@^2.1.1" }
+  }

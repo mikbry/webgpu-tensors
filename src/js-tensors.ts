@@ -1,4 +1,4 @@
-import { Tensors, Tensor, DType, Device, Shape, TensorOptions, NestedArray } from './webgpu-tensors';
+import { Tensors, Tensor, DType, Device, Shape, TensorOptions, NestedArray, buildShapeFromNestedArray, getShapeSize, Float32NestedArray } from './webgpu-tensors';
 
 class Size {
   data: number[];
@@ -38,12 +38,55 @@ class JSTensor implements Tensor {
     this.readable = true;
   }
 
-  async readArray<T>(options?: { mode?: 1 | undefined } | undefined): Promise<NestedArray<T>> {
-    return this.data as unknown as NestedArray<T>;
+  private stridedToNestedArray<T>(
+    buffer: T[],
+    dim: number[],
+    offset = 0,
+    depth = 0,
+): NestedArray<T> {
+    if (dim.length === 1) {
+        const length = getShapeSize(dim);
+        return buffer.slice(offset, offset + length) as NestedArray<T>;
+    }
+    const array: NestedArray<T> = [];
+    for (let n = 0; n < dim[0]; n++) {
+        const nestedShape = [...dim];
+        nestedShape.shift();
+        const length = getShapeSize(nestedShape);
+        const i = length * n;
+        const nestedArray = this.stridedToNestedArray(buffer, nestedShape, offset + i, depth + 1);
+        array.push(Array.from(nestedArray) as NestedArray<T>);
+    }
+    return array;
+}
+
+stridedToNestedFloat32Array<T>(
+  buffer: Array<T>,
+  dim: number[],
+  offset = 0,
+  depth = 0,
+): Float32NestedArray {
+  if (dim.length === 1) {
+      const length = getShapeSize(dim);
+      return new Float32Array(buffer.slice(offset, offset + length) as number[]);
+  }
+  const array: Float32NestedArray = [];
+  for (let n = 0; n < dim[0]; n++) {
+      const nestedShape = [...dim];
+      nestedShape.shift();
+      const length = getShapeSize(nestedShape);
+      const i = length * n;
+      const nestedArray = this.stridedToNestedFloat32Array(buffer, nestedShape, offset + i, depth + 1);
+      array.push(nestedArray);
+  }
+  return array;
+}
+  async readArray<T>(_options?: { mode?: 1 | undefined } | undefined): Promise<NestedArray<T>> {
+    return this.stridedToNestedArray<T>(this.data as T[], this.shape.data);
   }
 
-  async readFloat32(options?: { mode?: 1 | undefined } | undefined): Promise<Float32Array> {
-    return new Float32Array(this.data);
+  async readFloat32(_options?: { mode?: 1 | undefined } | undefined): Promise<Float32Array> {
+    return this.stridedToNestedFloat32Array(this.data, this.shape.data) as Float32Array;
   }
 
   size(dim?: number): Size | number {
@@ -59,26 +102,26 @@ class JSTensor implements Tensor {
 }
 
 export class JSTensors implements Tensors {
-  async init(device: Device = Device.CPU): Promise<void> {
+  async init(_device: Device = Device.CPU): Promise<void> {
     // No initialization needed for JS implementation
   }
 
-  empty(shape: Shape, options?: Partial<TensorOptions> | undefined): Tensor {
+  empty(shape: Shape, _options?: Partial<TensorOptions> | undefined): Tensor {
     const size = shape.reduce((a, b) => a * b, 1);
     return new JSTensor(new Array(size), shape);
   }
 
-  ones(shape: Shape, options?: Partial<TensorOptions> | undefined): Tensor {
+  ones(shape: Shape, _options?: Partial<TensorOptions> | undefined): Tensor {
     const size = shape.reduce((a, b) => a * b, 1);
     return new JSTensor(new Array(size).fill(1), shape);
   }
 
-  rand(shape: Shape, options?: Partial<TensorOptions> | undefined): Tensor {
+  rand(shape: Shape, _options?: Partial<TensorOptions> | undefined): Tensor {
     const size = shape.reduce((a, b) => a * b, 1);
     return new JSTensor(Array.from({ length: size }, () => Math.random()), shape);
   }
 
-  randn(shape: Shape, options?: Partial<TensorOptions> | undefined): Tensor {
+  randn(shape: Shape, _options?: Partial<TensorOptions> | undefined): Tensor {
     const size = shape.reduce((a, b) => a * b, 1);
     return new JSTensor(Array.from({ length: size }, () => {
       let u = 0, v = 0;
@@ -88,29 +131,15 @@ export class JSTensors implements Tensors {
     }), shape);
   }
 
-  zeros(shape: Shape, options?: Partial<TensorOptions> | undefined): Tensor {
+  zeros(shape: Shape, _options?: Partial<TensorOptions> | undefined): Tensor {
     const size = shape.reduce((a, b) => a * b, 1);
     return new JSTensor(new Array(size).fill(0), shape);
   }
 
-  tensor(array: NestedArray<number>, options?: Partial<TensorOptions> | undefined): Tensor {
-    const flatArray = this.flattenArray(array);
-    const shape = this.getShape(array);
-    return new JSTensor(flatArray, shape);
-  }
-
-  private flattenArray(array: NestedArray<number>): number[] {
-    return array.flat(Infinity) as number[];
-  }
-
-  private getShape(array: NestedArray<number>): Shape {
-    const shape: Shape = [];
-    let current: any = array;
-    while (Array.isArray(current)) {
-      shape.push(current.length);
-      current = current[0];
-    }
-    return shape;
+  tensor(array: NestedArray<number>, _options?: Partial<TensorOptions> | undefined): Tensor {
+    const shape = buildShapeFromNestedArray(array);
+    const stridedArray = (shape.length === 1 ? array : array.flat(shape.length as 10)) as number[];
+    return new JSTensor(stridedArray, shape.data);
   }
 
   matmul(tensorA: Tensor, tensorB: Tensor): Tensor {
