@@ -1,12 +1,13 @@
 import { expect, test, describe, beforeEach } from 'vitest';
-import t, { Tensors, DType } from '../src/webgpu-tensors';
+import { Tensors, DType } from '../src/webgpu-tensors';
+import createJSTensors from '../src/js-tensors';
 
-describe('WebGPUTensors', () => {
+describe('JSTensors', () => {
   let tensors: Tensors;
 
   beforeEach(async () => {
-    tensors = t;
-    await t.init();
+    tensors = createJSTensors();
+    await tensors.init();
   });
 
   test('Create empty tensor', () => {
