@@ -17,7 +17,7 @@ describe('WebGPUTensors', () => {
     expect(tensor.dtype).toBe(DType.Float32);
   });
 
-  test('Create ones tensor', () => {
+  test('Create ones tensor', async () => {
     const shape = [2, 2];
     const tensor = tensors.ones(shape);
     expect(tensor).toBeInstanceOf(Tensor);

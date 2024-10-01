@@ -1,6 +1,12 @@
 import unittest
 import numpy as np
-from src.webgpu_tensors import WebGPUTensors, Tensor, DType, Device
+import sys
+import os
+
+# Add the project root directory to the Python path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from webgpu_tensors import WebGPUTensors, Tensor, DType, Device
 
 class TestWebGPUTensors(unittest.TestCase):
     def setUp(self):
