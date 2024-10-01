@@ -4,6 +4,12 @@ Experimental WebGPU/Js Tensors library. Inspired by Pytorch.
 
 ## Run examples
 
+- [Example 0](./examples/ex0.ts) : just a tensors copy.
+- [Example 1](./examples/ex1.ts) : several tests.
+- [Example 2](./examples/ex2.ts) : Create a simple 2-layer neural network (Typescript and [Pytorch implementation](./examples/ex2.py) to compare results)
+- Example 3 : Import a csv dataset (TODO)
+- Example x : Transformer (TODO)
+
 ### Using Deno
 
 ```bash
