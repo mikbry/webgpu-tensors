@@ -40,7 +40,7 @@ const testTensors = (tensors: Tensors) => {
       expect(tensor).toBeInstanceOf(Object);
       expect(tensor.shape.data).toEqual(shape);
       const data = await tensors.clone(tensor).readArray<number>();
-      expect(data.flat().every(v => v >= 0 && v < 1)).toBe(true);
+      expect((data as number[]).flat().every(v => v >= 0 && v < 1)).toBe(true);
     });
 
     test('Create randn tensor', async () => {
@@ -49,8 +49,8 @@ const testTensors = (tensors: Tensors) => {
       expect(tensor).toBeInstanceOf(Object);
       expect(tensor.shape.data).toEqual(shape);
       const data = await tensors.clone(tensor).readArray<number>();
-      const mean = data.reduce((sum, val) => sum + val, 0) / data.length;
-      const variance = data.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / data.length;
+      const mean = (data as number[]).reduce((sum, val) => sum + val, 0) / data.length;
+      const variance = (data as number[]).reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / data.length;
       expect(mean).toBeCloseTo(0, 1);
       expect(Math.sqrt(variance)).toBeCloseTo(1, 1);
     });
@@ -125,7 +125,7 @@ const testTensors = (tensors: Tensors) => {
       const a = tensors.tensor([-2, -1, 0, 1, 2]);
       const result = tensors.sigmoid(a);
       const data = await tensors.clone(result).readArray<number>();
-      expect(data.map(v => Number(v.toFixed(4)))).toEqual([0.1192, 0.2689, 0.5000, 0.7311, 0.8808]);
+      expect((data as number[]).map(v => Number(v.toFixed(4)))).toEqual([0.1192, 0.2689, 0.5000, 0.7311, 0.8808]);
     });
 
     test('Max', async () => {
