@@ -1,5 +1,5 @@
 import './style.css';
-import t from './webgpu-tensors';
+import t from '@/webgpu-tensors';
 
 /* const writeTensor = await t.tensor([[0, 1, 2, 3]]);
 console.log('writeTensor', writeTensor);
@@ -11,5 +11,5 @@ await t.copy(writeTensor, readTensor);
 
 t.print(readTensor); */
 
-const x = await t.rand([5, 3]);
+const x = t.rand([5, 3]);
 t.print(x);

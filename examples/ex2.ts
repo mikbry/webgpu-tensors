@@ -1,4 +1,4 @@
-import t, { Tensor } from '../src/webgpu-tensors';
+import t, { Tensor } from '@/webgpu-tensors';
 
 // await t.init();
 await t.print('Train a simple 2-layer neural network');

@@ -1,6 +1,6 @@
 import { expect, test, describe, beforeEach } from 'vitest';
-import t, { Tensors, DType } from '../src/webgpu-tensors';
-import { JSTensors } from '../src/js-tensors';
+import { device, Tensors, DType, isAvailable } from '@/webgpu-tensors';
+import { Device } from 'packages/core/src/types';
 
 const testTensors = (tensors: Tensors) => {
   describe('Tensor Operations', () => {
@@ -22,7 +22,10 @@ const testTensors = (tensors: Tensors) => {
       expect(tensor).toBeInstanceOf(Object);
       expect(tensor.shape.data).toEqual(shape);
       const data = await tensors.clone(tensor).readArray<number>();
-      expect(data).toEqual([[1, 1], [1, 1]]);
+      expect(data).toEqual([
+        [1, 1],
+        [1, 1],
+      ]);
     });
 
     test('Create zeros tensor', async () => {
@@ -31,7 +34,10 @@ const testTensors = (tensors: Tensors) => {
       expect(tensor).toBeInstanceOf(Object);
       expect(tensor.shape.data).toEqual(shape);
       const data = await tensors.clone(tensor).readArray<number>();
-      expect(data).toEqual([[0, 0, 0], [0, 0, 0]]);
+      expect(data).toEqual([
+        [0, 0, 0],
+        [0, 0, 0],
+      ]);
     });
 
     test('Create rand tensor', async () => {
@@ -40,7 +46,7 @@ const testTensors = (tensors: Tensors) => {
       expect(tensor).toBeInstanceOf(Object);
       expect(tensor.shape.data).toEqual(shape);
       const data = await tensors.clone(tensor).readArray<number>();
-      expect((data as number[]).flat().every(v => v >= 0 && v < 1)).toBe(true);
+      expect((data as number[]).flat().every((v) => v >= 0 && v < 1)).toBe(true);
     });
 
     test('Create randn tensor', async () => {
@@ -50,17 +56,27 @@ const testTensors = (tensors: Tensors) => {
       expect(tensor.shape.data).toEqual(shape);
       const data = await tensors.clone(tensor).readArray<number>();
       const mean = (data as number[]).reduce((sum, val) => sum + val, 0) / data.length;
-      const variance = (data as number[]).reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / data.length;
+      const variance =
+        (data as number[]).reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / data.length;
       expect(mean).toBeCloseTo(0, 1);
       expect(Math.sqrt(variance)).toBeCloseTo(1, 1);
     });
 
     test('Matrix multiplication', async () => {
-      const a = tensors.tensor([[1, 2], [3, 4]]);
-      const b = tensors.tensor([[5, 6], [7, 8]]);
+      const a = tensors.tensor([
+        [1, 2],
+        [3, 4],
+      ]);
+      const b = tensors.tensor([
+        [5, 6],
+        [7, 8],
+      ]);
       const result = tensors.matmul(a, b);
       const data = await tensors.clone(result).readArray<number>();
-      expect(data).toEqual([[19, 22], [43, 50]]);
+      expect(data).toEqual([
+        [19, 22],
+        [43, 50],
+      ]);
     });
 
     test('Subtraction', async () => {
@@ -94,10 +110,17 @@ const testTensors = (tensors: Tensors) => {
     });
 
     test('Transpose', async () => {
-      const a = tensors.tensor([[1, 2, 3], [4, 5, 6]]);
+      const a = tensors.tensor([
+        [1, 2, 3],
+        [4, 5, 6],
+      ]);
       const result = tensors.transpose(a);
       const data = await tensors.clone(result).readArray<number>();
-      expect(data).toEqual([[1, 4], [2, 5], [3, 6]]);
+      expect(data).toEqual([
+        [1, 4],
+        [2, 5],
+        [3, 6],
+      ]);
     });
 
     test('Maximum', async () => {
@@ -125,7 +148,9 @@ const testTensors = (tensors: Tensors) => {
       const a = tensors.tensor([-2, -1, 0, 1, 2]);
       const result = tensors.sigmoid(a);
       const data = await tensors.clone(result).readArray<number>();
-      expect((data as number[]).map(v => Number(v.toFixed(4)))).toEqual([0.1192, 0.2689, 0.5000, 0.7311, 0.8808]);
+      expect((data as number[]).map((v) => Number(v.toFixed(4)))).toEqual([
+        0.1192, 0.2689, 0.5, 0.7311, 0.8808,
+      ]);
     });
 
     test('Max', async () => {
@@ -138,9 +163,15 @@ const testTensors = (tensors: Tensors) => {
 };
 
 describe('WebGPUTensors', () => {
-  testTensors(t);
+  if (isAvailable(Device.GPU)) {
+    testTensors(device(Device.GPU));
+  } else {
+    test('No WebGPU Support', async () => {
+      expect(isAvailable(Device.GPU)).toBe(false);
+    });
+  }
 });
 
 describe('JSTensors', () => {
-  testTensors(new JSTensors());
+  testTensors(device(Device.CPU));
 });

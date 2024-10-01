@@ -1500,6 +1500,7 @@
     "packageJson": {
       "dependencies": [
         "npm:@eslint/js@^9.11.1",
+        "npm:@types/node@^22.7.4",
         "npm:@vitest/coverage-v8@^2.1.1",
         "npm:@webgpu/types@^0.1.45",
         "npm:eslint-config-prettier@^9.1.0",

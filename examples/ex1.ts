@@ -1,4 +1,4 @@
-import t from '../src/webgpu-tensors';
+import t from '@/webgpu-tensors';
 
 await t.init();
 let x = t.rand([5, 3]);

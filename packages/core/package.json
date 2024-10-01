@@ -1,0 +1,9 @@
+{
+  "name": "webgpu-tensors",
+  "version": "1.0.0",
+  "devDependencies": {},
+  "scripts": {},
+  "author": "Mik Bry",
+  "license": "MIT",
+  "description": "webgpu-tensors core"
+}

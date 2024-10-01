@@ -1,11 +1,9 @@
-import { configDefaults, defineConfig } from 'vitest/config'
+import { configDefaults, defineConfig } from 'vitest/config';
+import config from './vite.config';
 
 export default defineConfig({
-  plugins: [],
+  ...config,
   test: {
-    exclude:[
-      ...configDefaults.exclude, 
-      './examples/*.ts'
-    ]
+    exclude: [...configDefaults.exclude, './examples/*.ts'],
   },
 });

@@ -1,4 +1,4 @@
-import t from '../src/webgpu-tensors';
+import t from '@/webgpu-tensors';
 
 await t.init();
 const writeTensor = t.tensor([0, 1, 2, 3]);
