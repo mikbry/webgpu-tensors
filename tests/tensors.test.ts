@@ -1,5 +1,5 @@
-import { expect, test, describe } from 'vitest';
-import { WebGPUTensors, Tensor, DType, Device } from '../src/webgpu-tensors';
+import { expect, test, describe, beforeEach } from 'vitest';
+import { WebGPUTensors, Tensor, DType } from '../src/webgpu-tensors';
 
 describe('WebGPUTensors', () => {
   let tensors: WebGPUTensors;
