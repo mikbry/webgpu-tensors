@@ -1,4 +1,27 @@
-import { Tensors, Tensor, DType, Device, Size, Shape, TensorOptions, NestedArray } from './webgpu-tensors';
+import { Tensors, Tensor, DType, Device, Shape, TensorOptions, NestedArray } from './webgpu-tensors';
+
+class Size {
+  data: number[];
+  constructor(data: number[]) {
+    this.data = data;
+  }
+
+  get length() {
+    return this.data.length;
+  }
+
+  get size() {
+    return this.data.reduce((a, b) => a * b, 1);
+  }
+
+  getDim(dim: number) {
+    return this.data[dim];
+  }
+
+  toString() {
+    return `Size[${this.data.join(',')}]`;
+  }
+}
 
 class JSTensor implements Tensor {
   data: number[];
@@ -71,9 +94,13 @@ export class JSTensors implements Tensors {
   }
 
   tensor(array: NestedArray<number>, options?: Partial<TensorOptions> | undefined): Tensor {
-    const flatArray = array.flat(Infinity) as number[];
+    const flatArray = this.flattenArray(array);
     const shape = this.getShape(array);
     return new JSTensor(flatArray, shape);
+  }
+
+  private flattenArray(array: NestedArray<number>): number[] {
+    return array.flat(Infinity) as number[];
   }
 
   private getShape(array: NestedArray<number>): Shape {
