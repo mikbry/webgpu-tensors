@@ -1,0 +1,17 @@
+[package]
+name = "workspace"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+webgpu-tensors-cli = { path = "./crates/cli" }
+webgpu-tensors = { path = "./crates/core" }
+
+
+[workspace]
+members = [
+    "crates/cli",
+    "crates/core"
+]
+
+[workspace.dependencies]
