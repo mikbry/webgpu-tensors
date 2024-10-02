@@ -111,9 +111,6 @@ impl Tensor for JSTensor {
 pub struct JSTensors;
 
 impl Tensors for JSTensors {
-    // Implement the methods for JSTensors
-    // For brevity, we'll just implement a few methods as examples
-
     fn init(&mut self, _device: Option<Device>) -> Result<(), &'static str> {
         Ok(()) // No initialization needed for JS implementation
     }
@@ -123,6 +120,66 @@ impl Tensors for JSTensors {
         Box::new(JSTensor {
             data: vec![0.0; size.size()],
             shape: size,
+            dtype: DType::Float32,
+            device: Device::CPU,
+            readable: true,
+        })
+    }
+
+    fn ones(&self, shape: Shape, _options: Option<TensorOptions>) -> Box<dyn Tensor> {
+        let size = Size::new(shape.clone());
+        Box::new(JSTensor {
+            data: vec![1.0; size.size()],
+            shape: size,
+            dtype: DType::Float32,
+            device: Device::CPU,
+            readable: true,
+        })
+    }
+
+    fn rand(&self, shape: Shape, _options: Option<TensorOptions>) -> Box<dyn Tensor> {
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        let size = Size::new(shape.clone());
+        Box::new(JSTensor {
+            data: (0..size.size()).map(|_| rng.gen::<f32>()).collect(),
+            shape: size,
+            dtype: DType::Float32,
+            device: Device::CPU,
+            readable: true,
+        })
+    }
+
+    fn randn(&self, shape: Shape, _options: Option<TensorOptions>) -> Box<dyn Tensor> {
+        use rand::distributions::{Distribution, Standard};
+        use rand::thread_rng;
+        let mut rng = thread_rng();
+        let size = Size::new(shape.clone());
+        Box::new(JSTensor {
+            data: Standard.sample_iter(&mut rng).take(size.size()).collect(),
+            shape: size,
+            dtype: DType::Float32,
+            device: Device::CPU,
+            readable: true,
+        })
+    }
+
+    fn zeros(&self, shape: Shape, _options: Option<TensorOptions>) -> Box<dyn Tensor> {
+        let size = Size::new(shape.clone());
+        Box::new(JSTensor {
+            data: vec![0.0; size.size()],
+            shape: size,
+            dtype: DType::Float32,
+            device: Device::CPU,
+            readable: true,
+        })
+    }
+
+    fn tensor(&self, array: Vec<f32>, _options: Option<TensorOptions>) -> Box<dyn Tensor> {
+        let shape = vec![array.len()];
+        Box::new(JSTensor {
+            data: array,
+            shape: Size::new(shape),
             dtype: DType::Float32,
             device: Device::CPU,
             readable: true,
@@ -158,8 +215,6 @@ impl Tensors for JSTensors {
         }
         Ok(())
     }
-
-    // Implement other methods...
 }
 
 #[cfg(test)]
