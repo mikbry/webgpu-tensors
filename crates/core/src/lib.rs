@@ -14,7 +14,7 @@ pub enum Device {
 
 pub type Shape = Vec<usize>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Size {
     data: Vec<usize>,
 }
