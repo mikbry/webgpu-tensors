@@ -92,8 +92,7 @@ pub struct RSTensor {
 
 impl fmt::Display for RSTensor {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "RSTensor {{ shape: {}, dtype: {:?}, device: {:?}, readable: {} }}", 
-               self.shape, self.dtype, self.device, self.readable)
+        write!(f, "Tensor{:?}", self.data)
     }
 }
 
