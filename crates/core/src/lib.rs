@@ -61,8 +61,16 @@ pub trait Tensors {
     fn zeros(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor;
     fn tensor(&self, array: Vec<f32>, options: Option<TensorOptions>) -> RSTensor;
     fn matmul(&self, tensor_a: &RSTensor, tensor_b: &RSTensor) -> RSTensor;
-    fn print(&self, data: &[RSTensor]) -> Result<(), &'static str>;
     fn copy(&self, src: &RSTensor, dst: &mut RSTensor) -> Result<(), &'static str>;
+}
+
+#[macro_export]
+macro_rules! tensors_println {
+    ($($arg:tt)*) => {{
+        let tensors = RSTensors;
+        let formatted = format!($($arg)*);
+        println!("{}", formatted);
+    }};
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -218,13 +226,6 @@ impl Tensors for RSTensors {
             device: Device::CPU,
             readable: true,
         }
-    }
-
-    fn print(&self, data: &[RSTensor]) -> Result<(), &'static str> {
-        for item in data {
-            println!("{:?}", item);
-        }
-        Ok(())
     }
 
     fn copy(&self, src: &RSTensor, dst: &mut RSTensor) -> Result<(), &'static str> {

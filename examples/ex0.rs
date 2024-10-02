@@ -1,4 +1,4 @@
-use webgpu_tensors::{RSTensors, Tensors};
+use webgpu_tensors::{RSTensors, Tensors, tensors_println};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut t = RSTensors;
@@ -8,7 +8,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut read_tensor = t.empty(vec![4], None);
 
     t.copy(&write_tensor, &mut read_tensor)?;
-    t.print(&[read_tensor])?;
+    tensors_println!("{:?}", read_tensor);
 
     Ok(())
 }
