@@ -1,7 +1,7 @@
 use webgpu_tensors::{RSTensors, Shape, Tensors, TensorOptions};
 
 fn main() {
-    let mut tensors = RSTensors;
+    let tensors = RSTensors;
     tensors.init(None).unwrap();
 
     let shape: Shape = vec![2, 3];
