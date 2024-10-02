@@ -1,7 +1,6 @@
 use webgpu_tensors::{RSTensors, Tensors};
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut t = RSTensors;
     t.init(None)?;
 
