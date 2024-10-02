@@ -21,24 +21,28 @@ impl WASMTensorsImpl {
         WASMTensorsImpl { instance: RSTensors, device_type: 0 }
     }
 
+    #[inline]
     pub fn init(&mut self) {
         let _ = self.instance.init(None);
     }
 
+    #[inline]
     pub fn reset(&mut self) {
         self.instance.reset();
     }
 
+    #[inline]
     pub fn compute(&mut self) {
         self.instance.compute();
     }
 
+    #[inline]
     pub fn destroy(&mut self) {
         self.instance.destroy();
     }
 
-
+    #[inline]
     pub fn randn(&mut self) {
-        // alert("Hello, wasm!");
+        // TODO
     }
 }
