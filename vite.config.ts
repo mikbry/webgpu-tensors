@@ -9,6 +9,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@/webgpu-tensors': path.resolve(dirname, './packages/core/src'),
+      '@/webgpu-tensors-wasm': path.resolve(dirname, './packages/wasm'),
     },
   },
   plugins: [],

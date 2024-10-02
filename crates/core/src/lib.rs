@@ -54,6 +54,10 @@ pub trait Tensor {
 
 pub trait Tensors {
     fn init(&mut self, device: Option<Device>) -> Result<(), &'static str>;
+    fn reset(&mut self);
+    fn compute(&mut self);
+    fn destroy(&mut self);
+
     fn empty(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor;
     fn ones(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor;
     fn rand(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor;
@@ -129,6 +133,18 @@ pub struct RSTensors;
 impl Tensors for RSTensors {
     fn init(&mut self, _device: Option<Device>) -> Result<(), &'static str> {
         Ok(()) // No initialization needed for RS implementation
+    }
+
+    fn reset(&mut self) {
+        // TODO
+    }
+
+    fn compute(&mut self) {
+        // TODO
+    }
+
+    fn destroy(&mut self) {
+        // alert("Hello, wasm!");
     }
 
     fn empty(&self, shape: Shape, _options: Option<TensorOptions>) -> RSTensor {
@@ -208,7 +224,7 @@ impl Tensors for RSTensors {
         let a = tensor_a.shape();
         let b = tensor_b.shape();
         let m = a.get_dim(0).unwrap();
-        let n = a.get_dim(1).unwrap();
+        let _n = a.get_dim(1).unwrap();
         let p = b.get_dim(1).unwrap();
 
         let result = vec![0.0; m * p];

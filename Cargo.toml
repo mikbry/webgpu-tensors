@@ -6,12 +6,13 @@ edition = "2021"
 [dependencies]
 webgpu-tensors-cli = { path = "./crates/cli" }
 webgpu-tensors = { path = "./crates/core" }
-
+webgpu-tensors-wasm = { path = "./crates/wasm" }
 
 [workspace]
 members = [
     "crates/cli",
-    "crates/core"
+    "crates/core",
+    "crates/wasm",
 ]
 
 [workspace.dependencies]

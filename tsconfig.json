@@ -17,7 +17,8 @@
     "plugins": [],
     "baseUrl": ".",
     "paths": {
-      "@/webgpu-tensors": ["packages/core/src/index.ts"]
+      "@/webgpu-tensors": ["packages/core/src/index.ts"],
+      "@/webgpu-tensors-wasm": ["packages/wasm"]
     },
     "outDir": "dist",
     "noEmit": true

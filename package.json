@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "build:wasm": "wasm-pack build crates/wasm --out-dir ../../packages/wasm --out-name webgpu-tensors",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "lint": "eslint",
