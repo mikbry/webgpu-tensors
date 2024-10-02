@@ -1,4 +1,4 @@
-use webgpu_tensors::{RSTensors, Shape, Tensors, TensorOptions};
+use webgpu_tensors::{tensors_println, RSTensors, Shape, TensorOptions, Tensors};
 
 fn main() {
     let mut tensors = RSTensors;
@@ -14,9 +14,9 @@ fn main() {
     let a = tensors.ones(shape.clone(), options.clone());
     let b = tensors.rand(shape.clone(), options);
 
-    let c = tensors.matmul(&*a, &*b);
+    let c = tensors.matmul(&a, &b);
 
-    tensors.print(&[Box::new(a), Box::new(b), Box::new(c)]).unwrap();
+    tensors_println!("{:} {:} {:}", a, b, c);
 
     println!("Tensor operations completed successfully!");
 }
