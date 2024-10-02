@@ -5,6 +5,7 @@ export enum DType {
 export enum Device {
   GPU = 'GPU',
   CPU = 'CPU',
+  WASM = 'WASM',
 }
 
 export type NestedArray<T> = Array<NestedArray<T> | T>;
