@@ -1,15 +1,15 @@
-use webgpu_tensors::{RSTensors, Shape, Tensors};
+use webgpu_tensors::{RSTensors, Tensors};
 
-fn main() {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut t = RSTensors;
-    t.init(None).unwrap();
+    t.init(None)?;
 
-    let shape: Shape = vec![2, 3];
+    let write_tensor = t.tensor(vec![0.0, 1.0, 2.0, 3.0], None);
+    let mut read_tensor = t.empty(vec![4], None);
 
-    let writeTensor = t.tensor([0.0, 1.0, 2.0, 3.0].to_vec(), None);
-    let readTensor = t.empty([4].to_vec(), None);
+    t.copy(&write_tensor, &mut read_tensor)?;
+    t.print(&[read_tensor])?;
 
-    t.copy(&writeTensor, &readTensor);
-
-    t.print(&[readTensor]).unwrap();
+    Ok(())
 }

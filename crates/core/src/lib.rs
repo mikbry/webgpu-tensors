@@ -62,6 +62,7 @@ pub trait Tensors {
     fn tensor(&self, array: Vec<f32>, options: Option<TensorOptions>) -> RSTensor;
     fn matmul(&self, tensor_a: &RSTensor, tensor_b: &RSTensor) -> RSTensor;
     fn print(&self, data: &[RSTensor]) -> Result<(), &'static str>;
+    fn copy(&self, src: &RSTensor, dst: &mut RSTensor) -> Result<(), &'static str>;
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -223,6 +224,14 @@ impl Tensors for RSTensors {
         for item in data {
             println!("{:?}", item);
         }
+        Ok(())
+    }
+
+    fn copy(&self, src: &RSTensor, dst: &mut RSTensor) -> Result<(), &'static str> {
+        if src.shape() != dst.shape() {
+            return Err("Source and destination tensors must have the same shape");
+        }
+        dst.data.copy_from_slice(&src.data);
         Ok(())
     }
 }
