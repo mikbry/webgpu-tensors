@@ -66,10 +66,9 @@ pub trait Tensors {
 
 #[macro_export]
 macro_rules! tensors_println {
-    ($($arg:tt)*) => {{
-        let formatted = format!($($arg)*);
-        println!("{}", formatted);
-    }};
+    ($($arg:tt)*) => {
+        println!($($arg)*);
+    };
 }
 
 #[derive(Debug, Clone, Copy)]

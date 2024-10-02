@@ -8,7 +8,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut read_tensor = t.empty(vec![4], None);
 
     t.copy(&write_tensor, &mut read_tensor)?;
-    tensors_println!("{:?}", read_tensor);
+    tensors_println!("{}", read_tensor);
 
     Ok(())
 }
