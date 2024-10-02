@@ -54,14 +54,14 @@ pub trait Tensor {
 
 pub trait Tensors {
     fn init(&mut self, device: Option<Device>) -> Result<(), &'static str>;
-    fn empty(&self, shape: Shape, options: Option<TensorOptions>) -> Box<dyn Tensor>;
-    fn ones(&self, shape: Shape, options: Option<TensorOptions>) -> Box<dyn Tensor>;
-    fn rand(&self, shape: Shape, options: Option<TensorOptions>) -> Box<dyn Tensor>;
-    fn randn(&self, shape: Shape, options: Option<TensorOptions>) -> Box<dyn Tensor>;
-    fn zeros(&self, shape: Shape, options: Option<TensorOptions>) -> Box<dyn Tensor>;
-    fn tensor(&self, array: Vec<f32>, options: Option<TensorOptions>) -> Box<dyn Tensor>;
-    fn matmul(&self, tensor_a: &dyn Tensor, tensor_b: &dyn Tensor) -> Box<dyn Tensor>;
-    fn print(&self, data: &[Box<dyn std::fmt::Debug>]) -> Result<(), &'static str>;
+    fn empty(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor;
+    fn ones(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor;
+    fn rand(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor;
+    fn randn(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor;
+    fn zeros(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor;
+    fn tensor(&self, array: Vec<f32>, options: Option<TensorOptions>) -> RSTensor;
+    fn matmul(&self, tensor_a: &RSTensor, tensor_b: &RSTensor) -> RSTensor;
+    fn print(&self, data: &[RSTensor]) -> Result<(), &'static str>;
 }
 
 pub struct TensorOptions {
@@ -71,12 +71,22 @@ pub struct TensorOptions {
 }
 
 // Implement RSTensor and RSTensors as structs
+use std::fmt;
+
+#[derive(Debug)]
 pub struct RSTensor {
     data: Vec<f32>,
     shape: Size,
     dtype: DType,
     device: Device,
     readable: bool,
+}
+
+impl fmt::Display for RSTensor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "RSTensor {{ shape: {}, dtype: {:?}, device: {:?}, readable: {} }}", 
+               self.shape, self.dtype, self.device, self.readable)
+    }
 }
 
 impl Tensor for RSTensor {
@@ -112,81 +122,81 @@ pub struct RSTensors;
 
 impl Tensors for RSTensors {
     fn init(&mut self, _device: Option<Device>) -> Result<(), &'static str> {
-        Ok(()) // No initialization needed for JS implementation
+        Ok(()) // No initialization needed for RS implementation
     }
 
-    fn empty(&self, shape: Shape, _options: Option<TensorOptions>) -> Box<dyn Tensor> {
+    fn empty(&self, shape: Shape, _options: Option<TensorOptions>) -> RSTensor {
         let size = Size::new(shape.clone());
-        Box::new(RSTensor {
+        RSTensor {
             data: vec![0.0; size.size()],
             shape: size,
             dtype: DType::Float32,
             device: Device::CPU,
             readable: true,
-        })
+        }
     }
 
-    fn ones(&self, shape: Shape, _options: Option<TensorOptions>) -> Box<dyn Tensor> {
+    fn ones(&self, shape: Shape, _options: Option<TensorOptions>) -> RSTensor {
         let size = Size::new(shape.clone());
-        Box::new(RSTensor {
+        RSTensor {
             data: vec![1.0; size.size()],
             shape: size,
             dtype: DType::Float32,
             device: Device::CPU,
             readable: true,
-        })
+        }
     }
 
-    fn rand(&self, shape: Shape, _options: Option<TensorOptions>) -> Box<dyn Tensor> {
+    fn rand(&self, shape: Shape, _options: Option<TensorOptions>) -> RSTensor {
         use rand::Rng;
         let mut rng = rand::thread_rng();
         let size = Size::new(shape.clone());
-        Box::new(RSTensor {
+        RSTensor {
             data: (0..size.size()).map(|_| rng.gen::<f32>()).collect(),
             shape: size,
             dtype: DType::Float32,
             device: Device::CPU,
             readable: true,
-        })
+        }
     }
 
-    fn randn(&self, shape: Shape, _options: Option<TensorOptions>) -> Box<dyn Tensor> {
+    fn randn(&self, shape: Shape, _options: Option<TensorOptions>) -> RSTensor {
         use rand::distributions::{Distribution, Standard};
         use rand::thread_rng;
         let mut rng = thread_rng();
         let size = Size::new(shape.clone());
-        Box::new(RSTensor {
+        RSTensor {
             data: Standard.sample_iter(&mut rng).take(size.size()).collect(),
             shape: size,
             dtype: DType::Float32,
             device: Device::CPU,
             readable: true,
-        })
+        }
     }
 
-    fn zeros(&self, shape: Shape, _options: Option<TensorOptions>) -> Box<dyn Tensor> {
+    fn zeros(&self, shape: Shape, _options: Option<TensorOptions>) -> RSTensor {
         let size = Size::new(shape.clone());
-        Box::new(RSTensor {
+        RSTensor {
             data: vec![0.0; size.size()],
             shape: size,
             dtype: DType::Float32,
             device: Device::CPU,
             readable: true,
-        })
+        }
     }
 
-    fn tensor(&self, array: Vec<f32>, _options: Option<TensorOptions>) -> Box<dyn Tensor> {
+    fn tensor(&self, array: Vec<f32>, _options: Option<TensorOptions>) -> RSTensor {
         let shape = vec![array.len()];
-        Box::new(RSTensor {
+        RSTensor {
             data: array,
             shape: Size::new(shape),
             dtype: DType::Float32,
             device: Device::CPU,
             readable: true,
-        })
+        }
     }
 
-    fn matmul(&self, tensor_a: &dyn Tensor, tensor_b: &dyn Tensor) -> Box<dyn Tensor> {
+    fn matmul(&self, tensor_a: &RSTensor, tensor_b: &RSTensor) -> RSTensor {
         // Implement matrix multiplication
         // This is a simplified version and doesn't handle all cases
         let a = tensor_a.shape();
@@ -195,21 +205,21 @@ impl Tensors for RSTensors {
         let n = a.get_dim(1).unwrap();
         let p = b.get_dim(1).unwrap();
 
-        let mut result = vec![0.0; m * p];
+        let result = vec![0.0; m * p];
 
         // Implement the actual matrix multiplication here
         // For simplicity, we're not implementing the actual algorithm
 
-        Box::new(RSTensor {
+        RSTensor {
             data: result,
             shape: Size::new(vec![m, p]),
             dtype: DType::Float32,
             device: Device::CPU,
             readable: true,
-        })
+        }
     }
 
-    fn print(&self, data: &[Box<dyn std::fmt::Debug>]) -> Result<(), &'static str> {
+    fn print(&self, data: &[RSTensor]) -> Result<(), &'static str> {
         for item in data {
             println!("{:?}", item);
         }

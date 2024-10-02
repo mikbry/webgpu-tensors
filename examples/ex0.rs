@@ -14,7 +14,7 @@ fn main() {
     let a = tensors.ones(shape.clone(), options.clone());
     let b = tensors.rand(shape.clone(), options);
 
-    let c = tensors.matmul(&*a, &*b);
+    let c = tensors.matmul(&a, &b);
 
-    tensors.print(&[Box::new(a), Box::new(b), Box::new(c)]).unwrap();
+    tensors.print(&[a, b, c]).unwrap();
 }
