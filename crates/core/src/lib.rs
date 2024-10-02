@@ -70,8 +70,8 @@ pub struct TensorOptions {
     pub readable: bool,
 }
 
-// Implement JSTensor and JSTensors as structs
-pub struct JSTensor {
+// Implement RSTensor and RSTensors as structs
+pub struct RSTensor {
     data: Vec<f32>,
     shape: Size,
     dtype: DType,
@@ -79,7 +79,7 @@ pub struct JSTensor {
     readable: bool,
 }
 
-impl Tensor for JSTensor {
+impl Tensor for RSTensor {
     fn shape(&self) -> &Size {
         &self.shape
     }
@@ -108,16 +108,16 @@ impl Tensor for JSTensor {
     }
 }
 
-pub struct JSTensors;
+pub struct RSTensors;
 
-impl Tensors for JSTensors {
+impl Tensors for RSTensors {
     fn init(&mut self, _device: Option<Device>) -> Result<(), &'static str> {
         Ok(()) // No initialization needed for JS implementation
     }
 
     fn empty(&self, shape: Shape, _options: Option<TensorOptions>) -> Box<dyn Tensor> {
         let size = Size::new(shape.clone());
-        Box::new(JSTensor {
+        Box::new(RSTensor {
             data: vec![0.0; size.size()],
             shape: size,
             dtype: DType::Float32,
@@ -128,7 +128,7 @@ impl Tensors for JSTensors {
 
     fn ones(&self, shape: Shape, _options: Option<TensorOptions>) -> Box<dyn Tensor> {
         let size = Size::new(shape.clone());
-        Box::new(JSTensor {
+        Box::new(RSTensor {
             data: vec![1.0; size.size()],
             shape: size,
             dtype: DType::Float32,
@@ -141,7 +141,7 @@ impl Tensors for JSTensors {
         use rand::Rng;
         let mut rng = rand::thread_rng();
         let size = Size::new(shape.clone());
-        Box::new(JSTensor {
+        Box::new(RSTensor {
             data: (0..size.size()).map(|_| rng.gen::<f32>()).collect(),
             shape: size,
             dtype: DType::Float32,
@@ -155,7 +155,7 @@ impl Tensors for JSTensors {
         use rand::thread_rng;
         let mut rng = thread_rng();
         let size = Size::new(shape.clone());
-        Box::new(JSTensor {
+        Box::new(RSTensor {
             data: Standard.sample_iter(&mut rng).take(size.size()).collect(),
             shape: size,
             dtype: DType::Float32,
@@ -166,7 +166,7 @@ impl Tensors for JSTensors {
 
     fn zeros(&self, shape: Shape, _options: Option<TensorOptions>) -> Box<dyn Tensor> {
         let size = Size::new(shape.clone());
-        Box::new(JSTensor {
+        Box::new(RSTensor {
             data: vec![0.0; size.size()],
             shape: size,
             dtype: DType::Float32,
@@ -177,7 +177,7 @@ impl Tensors for JSTensors {
 
     fn tensor(&self, array: Vec<f32>, _options: Option<TensorOptions>) -> Box<dyn Tensor> {
         let shape = vec![array.len()];
-        Box::new(JSTensor {
+        Box::new(RSTensor {
             data: array,
             shape: Size::new(shape),
             dtype: DType::Float32,
@@ -200,7 +200,7 @@ impl Tensors for JSTensors {
         // Implement the actual matrix multiplication here
         // For simplicity, we're not implementing the actual algorithm
 
-        Box::new(JSTensor {
+        Box::new(RSTensor {
             data: result,
             shape: Size::new(vec![m, p]),
             dtype: DType::Float32,
