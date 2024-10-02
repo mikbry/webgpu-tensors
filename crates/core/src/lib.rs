@@ -64,6 +64,7 @@ pub trait Tensors {
     fn print(&self, data: &[RSTensor]) -> Result<(), &'static str>;
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct TensorOptions {
     pub usage: u32,
     pub mapped_at_creation: Option<bool>,
@@ -71,7 +72,6 @@ pub struct TensorOptions {
 }
 
 // Implement RSTensor and RSTensors as structs
-use std::fmt;
 
 #[derive(Debug)]
 pub struct RSTensor {

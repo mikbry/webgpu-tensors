@@ -1,20 +1,15 @@
-use webgpu_tensors::{RSTensors, Shape, Tensors, TensorOptions};
+use webgpu_tensors::{RSTensors, Shape, Tensors};
 
 fn main() {
-    let tensors = RSTensors;
-    tensors.init(None).unwrap();
+    let mut t = RSTensors;
+    t.init(None).unwrap();
 
     let shape: Shape = vec![2, 3];
-    let options = Some(TensorOptions {
-        usage: 0,
-        mapped_at_creation: None,
-        readable: true,
-    });
 
-    let a = tensors.ones(shape.clone(), options.clone());
-    let b = tensors.rand(shape.clone(), options);
+    let writeTensor = t.tensor([0.0, 1.0, 2.0, 3.0].to_vec(), None);
+    let readTensor = t.empty([4].to_vec(), None);
 
-    let c = tensors.matmul(&a, &b);
+    t.copy(&writeTensor, &readTensor);
 
-    tensors.print(&[a, b, c]).unwrap();
+    t.print(&[readTensor]).unwrap();
 }
