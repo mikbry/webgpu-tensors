@@ -52,7 +52,7 @@ fn main() {
         let loss = t.mean(&t.pow(&y_pred, 2.0));
 
         // Backward pass (manual gradient computation)
-        let grad_y_pred = t.mul(&t.sub(&y_pred, &y), 2.0 / y.numel() as f32);
+        let grad_y_pred = t.mul_scalar(&t.sub(&y_pred, &y), 2.0 / y.numel() as f32);
         let h_relu = t.relu(&t.matmul(&x, &model.w1));
         let grad_w2 = t.matmul(&t.transpose(&h_relu), &grad_y_pred);
         let grad_h = t.matmul(&grad_y_pred, &t.transpose(&model.w2));
@@ -60,8 +60,8 @@ fn main() {
         let grad_w1 = t.matmul(&t.transpose(&x), &t.mul(&grad_h, &mask));
 
         // Update weights
-        model.w1 = t.sub(&model.w1, &t.mul(&grad_w1, learning_rate));
-        model.w2 = t.sub(&model.w2, &t.mul(&grad_w2, learning_rate));
+        model.w1 = t.sub(&model.w1, &t.mul_scalar(&grad_w1, learning_rate));
+        model.w2 = t.sub(&model.w2, &t.mul_scalar(&grad_w2, learning_rate));
 
         // Print progress
         if epoch % 10 == 0 {
