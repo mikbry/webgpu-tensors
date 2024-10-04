@@ -1,0 +1,11 @@
+{
+  "name": "webgpu-tensors-wasm",
+  "version": "0.1.0",
+  "description": "WASM bindings for webgpu-tensors",
+  "main": "index.js",
+  "scripts": {
+    "build": "wasm-pack build"
+  },
+  "author": "",
+  "license": "ISC"
+}
