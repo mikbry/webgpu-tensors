@@ -444,6 +444,16 @@ impl Tensors for RSTensors {
         }
     }
 
+    fn clone(&self, tensor: &RSTensor) -> RSTensor {
+        RSTensor {
+            data: tensor.data.clone(),
+            shape: tensor.shape().clone(),
+            dtype: tensor.dtype(),
+            device: tensor.device(),
+            readable: tensor.readable(),
+        }
+    }
+
     fn item(&self, tensor: &RSTensor) -> f32 {
         assert_eq!(tensor.numel(), 1, "Tensor must contain a single element");
         tensor.data[0]
