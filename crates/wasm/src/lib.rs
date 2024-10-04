@@ -1,7 +1,7 @@
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 #[cfg(target_arch = "wasm32")]
-use webgpu_tensors::{RSTensors, Tensors, RSTensor, TensorOptions};
+use webgpu_tensors::{RSTensors, Tensors, RSTensor, TensorOptions, Device, DType};
 #[cfg(target_arch = "wasm32")]
 use serde::{Serialize, Deserialize};
 #[cfg(target_arch = "wasm32")]
@@ -53,14 +53,45 @@ impl WASMTensorsImpl {
     }
 
     #[wasm_bindgen]
+    pub fn empty(&self, shape: Vec<usize>, options: JsValue) -> Result<JsValue, JsValue> {
+        let tensor_options = self.parse_options(options);
+        let tensor = self.instance.empty(shape, Some(tensor_options));
+        to_value(&tensor).map_err(|e| e.into())
+    }
+
+    #[wasm_bindgen]
+    pub fn ones(&self, shape: Vec<usize>, options: JsValue) -> Result<JsValue, JsValue> {
+        let tensor_options = self.parse_options(options);
+        let tensor = self.instance.ones(shape, Some(tensor_options));
+        to_value(&tensor).map_err(|e| e.into())
+    }
+
+    #[wasm_bindgen]
+    pub fn rand(&self, shape: Vec<usize>, options: JsValue) -> Result<JsValue, JsValue> {
+        let tensor_options = self.parse_options(options);
+        let tensor = self.instance.rand(shape, Some(tensor_options));
+        to_value(&tensor).map_err(|e| e.into())
+    }
+
+    #[wasm_bindgen]
     pub fn randn(&self, shape: Vec<usize>, options: JsValue) -> Result<JsValue, JsValue> {
-        let js_options: JSTensorOptions = from_value(options).unwrap_or_else(|_| JSTensorOptions { dtype: None, device: None });
-        let tensor_options = TensorOptions {
-            usage: 0, // Set appropriate usage value
-            mapped_at_creation: None,
-            readable: true,
-        };
+        let tensor_options = self.parse_options(options);
         let tensor = self.instance.randn(shape, Some(tensor_options));
+        to_value(&tensor).map_err(|e| e.into())
+    }
+
+    #[wasm_bindgen]
+    pub fn zeros(&self, shape: Vec<usize>, options: JsValue) -> Result<JsValue, JsValue> {
+        let tensor_options = self.parse_options(options);
+        let tensor = self.instance.zeros(shape, Some(tensor_options));
+        to_value(&tensor).map_err(|e| e.into())
+    }
+
+    #[wasm_bindgen]
+    pub fn tensor(&self, array: JsValue, options: JsValue) -> Result<JsValue, JsValue> {
+        let tensor_options = self.parse_options(options);
+        let data: Vec<f32> = from_value(array).map_err(|e| e.to_string())?;
+        let tensor = self.instance.tensor(data, Some(tensor_options));
         to_value(&tensor).map_err(|e| e.into())
     }
 
@@ -78,5 +109,85 @@ impl WASMTensorsImpl {
         let tensor_b: RSTensor = from_value(b).map_err(|e| e.to_string())?;
         let result = self.instance.mul(&tensor_a, &tensor_b);
         to_value(&result).map_err(|e| e.into())
+    }
+
+    #[wasm_bindgen]
+    pub fn sub(&self, a: JsValue, b: JsValue) -> Result<JsValue, JsValue> {
+        let tensor_a: RSTensor = from_value(a).map_err(|e| e.to_string())?;
+        let tensor_b: RSTensor = from_value(b).map_err(|e| e.to_string())?;
+        let result = self.instance.sub(&tensor_a, &tensor_b);
+        to_value(&result).map_err(|e| e.into())
+    }
+
+    #[wasm_bindgen]
+    pub fn pow(&self, tensor: JsValue, exponent: f32) -> Result<JsValue, JsValue> {
+        let tensor: RSTensor = from_value(tensor).map_err(|e| e.to_string())?;
+        let result = self.instance.pow(&tensor, exponent);
+        to_value(&result).map_err(|e| e.into())
+    }
+
+    #[wasm_bindgen]
+    pub fn gt(&self, tensor: JsValue, value: f32) -> Result<JsValue, JsValue> {
+        let tensor: RSTensor = from_value(tensor).map_err(|e| e.to_string())?;
+        let result = self.instance.gt(&tensor, value);
+        to_value(&result).map_err(|e| e.into())
+    }
+
+    #[wasm_bindgen]
+    pub fn transpose(&self, tensor: JsValue) -> Result<JsValue, JsValue> {
+        let tensor: RSTensor = from_value(tensor).map_err(|e| e.to_string())?;
+        let result = self.instance.transpose(&tensor);
+        to_value(&result).map_err(|e| e.into())
+    }
+
+    #[wasm_bindgen]
+    pub fn maximum(&self, tensor: JsValue, value: f32) -> Result<JsValue, JsValue> {
+        let tensor: RSTensor = from_value(tensor).map_err(|e| e.to_string())?;
+        let result = self.instance.maximum(&tensor, value);
+        to_value(&result).map_err(|e| e.into())
+    }
+
+    #[wasm_bindgen]
+    pub fn relu(&self, tensor: JsValue) -> Result<JsValue, JsValue> {
+        let tensor: RSTensor = from_value(tensor).map_err(|e| e.to_string())?;
+        let result = self.instance.relu(&tensor);
+        to_value(&result).map_err(|e| e.into())
+    }
+
+    #[wasm_bindgen]
+    pub fn max(&self, tensor: JsValue) -> Result<JsValue, JsValue> {
+        let tensor: RSTensor = from_value(tensor).map_err(|e| e.to_string())?;
+        let result = self.instance.max(&tensor);
+        to_value(&result).map_err(|e| e.into())
+    }
+
+    #[wasm_bindgen]
+    pub fn mean(&self, tensor: JsValue) -> Result<JsValue, JsValue> {
+        let tensor: RSTensor = from_value(tensor).map_err(|e| e.to_string())?;
+        let result = self.instance.mean(&tensor);
+        to_value(&result).map_err(|e| e.into())
+    }
+
+    #[wasm_bindgen]
+    pub fn sigmoid(&self, tensor: JsValue) -> Result<JsValue, JsValue> {
+        let tensor: RSTensor = from_value(tensor).map_err(|e| e.to_string())?;
+        let result = self.instance.sigmoid(&tensor);
+        to_value(&result).map_err(|e| e.into())
+    }
+
+    #[wasm_bindgen]
+    pub fn clone(&self, tensor: JsValue) -> Result<JsValue, JsValue> {
+        let tensor: RSTensor = from_value(tensor).map_err(|e| e.to_string())?;
+        let result = self.instance.clone(&tensor);
+        to_value(&result).map_err(|e| e.into())
+    }
+
+    fn parse_options(&self, options: JsValue) -> TensorOptions {
+        let js_options: JSTensorOptions = from_value(options).unwrap_or_else(|_| JSTensorOptions { dtype: None, device: None });
+        TensorOptions {
+            usage: 0, // Set appropriate usage value
+            mapped_at_creation: None,
+            readable: true,
+        }
     }
 }
