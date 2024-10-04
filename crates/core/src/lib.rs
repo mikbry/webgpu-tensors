@@ -100,9 +100,10 @@ pub struct RSTensor {
 
 impl From<Vec<f32>> for RSTensor {
     fn from(data: Vec<f32>) -> Self {
+        let len = data.len();
         RSTensor {
             data,
-            shape: Size::new(vec![data.len()]),
+            shape: Size::new(vec![len]),
             dtype: DType::Float32,
             device: Device::CPU,
             readable: true,

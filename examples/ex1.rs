@@ -13,35 +13,35 @@ fn main() {
     let x = t.rand(vec![5, 3], None);
     tensors_println!("{}", x);
 
-    let x = t.tensor(vec![0.0, 1.0, 2.0, 3.0], None);
+    let x = t.tensor(&[0.0, 1.0, 2.0, 3.0], None);
     tensors_println!("{}", x);
 
-    let x = t.tensor(vec![
-        vec![0.0, 1.0, 2.0, 3.0],
-        vec![3.0, 4.0, 5.0, 6.0],
+    let x = t.tensor(&[
+        [0.0, 1.0, 2.0, 3.0],
+        [3.0, 4.0, 5.0, 6.0],
     ], None);
     println!("{}", x);
 
-    let x = t.tensor(vec![
-        vec![
-            vec![0.0, 1.0],
-            vec![2.0, 3.0],
+    let x = t.tensor(&[
+        [
+            [0.0, 1.0],
+            [2.0, 3.0],
         ],
-        vec![
-            vec![3.0, 4.0],
-            vec![5.0, 6.0],
+        [
+            [3.0, 4.0],
+            [5.0, 6.0],
         ],
     ], None);
     println!("{}", x);
 
-    let x = t.tensor(vec![
-        vec![
-            vec![vec![0.0], vec![1.0]],
-            vec![vec![2.0], vec![3.0]],
+    let x = t.tensor(&[
+        [
+            [[0.0], [1.0]],
+            [[2.0], [3.0]],
         ],
-        vec![
-            vec![vec![3.0], vec![4.0]],
-            vec![vec![5.0], vec![6.0]],
+        [
+            [[3.0], [4.0]],
+            [[5.0], [6.0]],
         ],
     ], None);
     println!("4D tensor:");
