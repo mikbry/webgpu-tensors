@@ -168,7 +168,31 @@ impl From<Vec<Vec<Vec<Vec<f32>>>>> for RSTensor {
 
 impl fmt::Display for RSTensor {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Tensor{:?}", self.data)
+        fn format_nested(data: &[f32], shape: &[usize], depth: usize) -> String {
+            if shape.is_empty() {
+                return format!("{}", data[0]);
+            }
+            let mut result = String::new();
+            let dim = shape[0];
+            let sub_size: usize = shape[1..].iter().product();
+            result.push('[');
+            for i in 0..dim {
+                if i > 0 {
+                    result.push_str(", ");
+                }
+                if depth > 0 {
+                    result.push('\n');
+                    result.push_str(&"  ".repeat(depth));
+                }
+                let start = i * sub_size;
+                let end = start + sub_size;
+                result.push_str(&format_nested(&data[start..end], &shape[1..], depth + 1));
+            }
+            result.push(']');
+            result
+        }
+
+        write!(f, "{}", format_nested(&self.data, &self.shape.data, 0))
     }
 }
 
