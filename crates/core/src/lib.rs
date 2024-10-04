@@ -146,6 +146,7 @@ impl Tensor for RSTensor {
 
 pub struct RSTensors;
 
+
 impl Tensors for RSTensors {
     fn init(&mut self, _device: Option<Device>) -> Result<(), &'static str> {
         Ok(()) // No initialization needed for RS implementation
