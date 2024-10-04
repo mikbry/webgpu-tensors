@@ -1,6 +1,7 @@
 use std::fmt;
 use rand::Rng;
 use rand::distributions::{Distribution, Standard};
+use std::convert::From;
 
 #[derive(Debug, Clone, Copy)]
 pub enum DType {
@@ -67,7 +68,7 @@ pub trait Tensors {
     fn rand(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor;
     fn randn(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor;
     fn zeros(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor;
-    fn tensor(&self, array: Vec<f32>, options: Option<TensorOptions>) -> RSTensor;
+    fn tensor<T: Into<RSTensor>>(&self, array: T, options: Option<TensorOptions>) -> RSTensor;
     fn matmul(&self, tensor_a: &RSTensor, tensor_b: &RSTensor) -> RSTensor;
     fn copy(&self, src: &RSTensor, dst: &mut RSTensor) -> Result<(), &'static str>;
     fn maximum(&self, tensor: &RSTensor, value: f32) -> RSTensor;
@@ -95,6 +96,60 @@ pub struct RSTensor {
     dtype: DType,
     device: Device,
     readable: bool,
+}
+
+impl From<Vec<f32>> for RSTensor {
+    fn from(data: Vec<f32>) -> Self {
+        RSTensor {
+            data,
+            shape: Size::new(vec![data.len()]),
+            dtype: DType::Float32,
+            device: Device::CPU,
+            readable: true,
+        }
+    }
+}
+
+impl From<Vec<Vec<f32>>> for RSTensor {
+    fn from(data: Vec<Vec<f32>>) -> Self {
+        let shape = vec![data.len(), data[0].len()];
+        let flattened: Vec<f32> = data.into_iter().flatten().collect();
+        RSTensor {
+            data: flattened,
+            shape: Size::new(shape),
+            dtype: DType::Float32,
+            device: Device::CPU,
+            readable: true,
+        }
+    }
+}
+
+impl From<Vec<Vec<Vec<f32>>>> for RSTensor {
+    fn from(data: Vec<Vec<Vec<f32>>>) -> Self {
+        let shape = vec![data.len(), data[0].len(), data[0][0].len()];
+        let flattened: Vec<f32> = data.into_iter().flatten().flatten().collect();
+        RSTensor {
+            data: flattened,
+            shape: Size::new(shape),
+            dtype: DType::Float32,
+            device: Device::CPU,
+            readable: true,
+        }
+    }
+}
+
+impl From<Vec<Vec<Vec<Vec<f32>>>>> for RSTensor {
+    fn from(data: Vec<Vec<Vec<Vec<f32>>>>) -> Self {
+        let shape = vec![data.len(), data[0].len(), data[0][0].len(), data[0][0][0].len()];
+        let flattened: Vec<f32> = data.into_iter().flatten().flatten().flatten().collect();
+        RSTensor {
+            data: flattened,
+            shape: Size::new(shape),
+            dtype: DType::Float32,
+            device: Device::CPU,
+            readable: true,
+        }
+    }
 }
 
 impl fmt::Display for RSTensor {
@@ -221,15 +276,8 @@ impl Tensors for RSTensors {
         }
     }
 
-    fn tensor(&self, array: Vec<f32>, _options: Option<TensorOptions>) -> RSTensor {
-        let shape = vec![array.len()];
-        RSTensor {
-            data: array,
-            shape: Size::new(shape),
-            dtype: DType::Float32,
-            device: Device::CPU,
-            readable: true,
-        }
+    fn tensor<T: Into<RSTensor>>(&self, array: T, _options: Option<TensorOptions>) -> RSTensor {
+        array.into()
     }
 
     fn matmul(&self, tensor_a: &RSTensor, tensor_b: &RSTensor) -> RSTensor {
