@@ -312,7 +312,7 @@ impl Tensors for RSTensors {
             data: vec![0.0; size.size()],
             shape: size,
             dtype: DType::Float32,
-            device: Device::CPU,Vec<f32>
+            device: Device::CPU,
             readable: true,
         }
     }
@@ -502,6 +502,10 @@ impl Tensors for RSTensors {
             readable: tensor.readable(),
         }
     }
+}
+
+impl Tensors for RSTensors {
+    // ... (keep all existing methods)
 }
 
 #[cfg(test)]
