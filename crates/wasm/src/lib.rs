@@ -202,6 +202,20 @@ impl WASMTensorsImpl {
         self.instance.copy(&src_tensor, &mut dst_tensor).map_err(|e| e.into())
     }
 
+    #[wasm_bindgen]
+    pub fn read_array(&self, tensor: JsValue) -> Result<JsValue, JsValue> {
+        let tensor: RSTensor = from_value(tensor).map_err(|e| e.to_string())?;
+        let result = tensor.read_array().map_err(|e| e.to_string())?;
+        to_value(&result).map_err(|e| e.into())
+    }
+
+    #[wasm_bindgen]
+    pub fn read_float32(&self, tensor: JsValue) -> Result<JsValue, JsValue> {
+        let tensor: RSTensor = from_value(tensor).map_err(|e| e.to_string())?;
+        let result = tensor.read_float32().map_err(|e| e.to_string())?;
+        to_value(&result).map_err(|e| e.into())
+    }
+
     fn parse_options(&self, options: JsValue) -> TensorOptions {
         let js_options: JSTensorOptions = from_value(options).unwrap_or_else(|_| JSTensorOptions { dtype: None, device: None });
         TensorOptions {
