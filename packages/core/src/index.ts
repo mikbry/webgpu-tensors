@@ -1,38 +1,46 @@
 import { Device, DType, NestedArray, Shape, Tensor, TensorOptions, Tensors } from './types';
 import { JSTensors } from './tensors/js';
 import WebGPUTensors from './tensors/webgpu';
+import { WASMTensors } from './tensors/wasm';
 
 class Framework implements Tensors {
-  static implementation: Tensors;
+  device: Device;
 
-  init(device?: Device) { return Framework.implementation.init(device);}
-  empty(shape: Shape, options?: Partial<TensorOptions> | undefined) { return Framework.implementation.empty(shape, options);}
-  ones(shape: Shape, options?: Partial<TensorOptions> | undefined) { return Framework.implementation.ones(shape, options);}
-  rand(shape: Shape, options?: Partial<TensorOptions> | undefined) { return Framework.implementation.rand(shape, options);}
-  randn(shape: Shape, options?: Partial<TensorOptions> | undefined) { return Framework.implementation.randn(shape, options);}
-  zeros(shape: Shape, options?: Partial<TensorOptions> | undefined) { return Framework.implementation.zeros(shape, options);}
-  tensor(array: NestedArray<number>, options?: Partial<TensorOptions> | undefined) { return Framework.implementation.tensor(array, options);}
-  matmul(tensorA: Tensor, tensorB: Tensor) { return Framework.implementation.matmul(tensorA, tensorB);}
-  sub(tensorA: Tensor, tensorB: Tensor) { return Framework.implementation.sub(tensorA, tensorB);}
-  pow(tensor: Tensor, exponent: number) { return Framework.implementation.pow(tensor, exponent);}
-  mul(tensorA: Tensor, tensorB: Tensor | number) { return Framework.implementation.mul(tensorA, tensorB);}
-  gt(tensor: Tensor, value: number) { return Framework.implementation.gt(tensor, value);}
-  transpose(tensor: Tensor) { return Framework.implementation.transpose(tensor);}
-  maximum(tensor: Tensor, value: number) { return Framework.implementation.maximum(tensor, value);}
-  relu(x: Tensor) { return Framework.implementation.relu(x);}
-  max(tensor: Tensor) { return Framework.implementation.max(tensor);}
-  mean(tensor: Tensor) { return Framework.implementation.mean(tensor);}
-  sigmoid(tensor: Tensor) { return Framework.implementation.sigmoid(tensor);}
-  clone(tensor: Tensor) { return Framework.implementation.clone(tensor);}
-  copy(tensorSource: Tensor, tensorDestination: Tensor) { return Framework.implementation.copy(tensorSource, tensorDestination);}
-  item(tensor: Tensor) { return Framework.implementation.item(tensor);}
-  reset() { return Framework.implementation.reset();}
-  compute() { return Framework.implementation.compute();}
-  destroy() { return Framework.implementation.destroy();}
-  print(...data: unknown[]) { return Framework.implementation.print(...data);}
+  implementation: Tensors;
+
+  constructor(device: Device, implementation: Tensors) {
+    this.device = device;
+    this.implementation = implementation;
+  }
+
+  init(device?: Device) { return this.implementation.init(device);}
+  empty(shape: Shape, options?: Partial<TensorOptions> | undefined) { return this.implementation.empty(shape, options);}
+  ones(shape: Shape, options?: Partial<TensorOptions> | undefined) { return this.implementation.ones(shape, options);}
+  rand(shape: Shape, options?: Partial<TensorOptions> | undefined) { return this.implementation.rand(shape, options);}
+  randn(shape: Shape, options?: Partial<TensorOptions> | undefined) { return this.implementation.randn(shape, options);}
+  zeros(shape: Shape, options?: Partial<TensorOptions> | undefined) { return this.implementation.zeros(shape, options);}
+  tensor(array: NestedArray<number>, options?: Partial<TensorOptions> | undefined) { return this.implementation.tensor(array, options);}
+  matmul(tensorA: Tensor, tensorB: Tensor) { return this.implementation.matmul(tensorA, tensorB);}
+  sub(tensorA: Tensor, tensorB: Tensor) { return this.implementation.sub(tensorA, tensorB);}
+  pow(tensor: Tensor, exponent: number) { return this.implementation.pow(tensor, exponent);}
+  mul(tensorA: Tensor, tensorB: Tensor | number) { return this.implementation.mul(tensorA, tensorB);}
+  gt(tensor: Tensor, value: number) { return this.implementation.gt(tensor, value);}
+  transpose(tensor: Tensor) { return this.implementation.transpose(tensor);}
+  maximum(tensor: Tensor, value: number) { return this.implementation.maximum(tensor, value);}
+  relu(x: Tensor) { return this.implementation.relu(x);}
+  max(tensor: Tensor) { return this.implementation.max(tensor);}
+  mean(tensor: Tensor) { return this.implementation.mean(tensor);}
+  sigmoid(tensor: Tensor) { return this.implementation.sigmoid(tensor);}
+  clone(tensor: Tensor) { return this.implementation.clone(tensor);}
+  copy(tensorSource: Tensor, tensorDestination: Tensor) { return this.implementation.copy(tensorSource, tensorDestination);}
+  item(tensor: Tensor) { return this.implementation.item(tensor);}
+  reset() { return this.implementation.reset();}
+  compute() { return this.implementation.compute();}
+  destroy() { return this.implementation.destroy();}
+  print(...data: unknown[]) { return this.implementation.print(...data);}
 }
 
-const framework = new Framework();
+
 
 export function isAvailable(device: Device): boolean {
   if (device === Device.GPU) {
@@ -47,17 +55,21 @@ export function isAvailable(device: Device): boolean {
 export function device(
   device: Device | undefined = WebGPUTensors.isAvailable() ? Device.GPU : Device.CPU,
 ): Tensors {
-  if (Framework.implementation) return framework;
 
+  let implementation: Tensors;
   if (device === Device.GPU) {
-    Framework.implementation = WebGPUTensors.create();
-    framework.init();
+    implementation = WebGPUTensors.create();
   } else if (device === Device.CPU) {
-    Framework.implementation = JSTensors.create();
-    framework.init();
+    implementation = JSTensors.create();
+
+  } else if (device === Device.WASM) {
+    implementation = WASMTensors.create();
   } else {
     throw new Error('Unknown device ' + device);
   }
+  const framework = new Framework(device, implementation);
+  framework.device = device;
+  framework.init();
   return framework;
 }
 

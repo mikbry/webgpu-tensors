@@ -95,6 +95,12 @@ class JSTensor implements Tensor {
 }
 
 export class JSTensors implements Tensors {
+  device: Device;
+
+  constructor() {
+    this.device = Device.CPU;
+  }
+
   static create() {
     return new JSTensors() as Tensors;
   }

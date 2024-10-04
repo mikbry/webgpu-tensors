@@ -1,9 +1,13 @@
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
+#[cfg(target_arch = "wasm32")]
 use webgpu_tensors::{RSTensors, Tensors, RSTensor, TensorOptions};
+#[cfg(target_arch = "wasm32")]
 use serde::{Serialize, Deserialize};
+#[cfg(target_arch = "wasm32")]
 use serde_wasm_bindgen::{to_value, from_value};
 
+#[cfg(target_arch = "wasm32")]
 #[derive(Serialize, Deserialize)]
 pub struct JSTensorOptions {
     pub dtype: Option<String>,

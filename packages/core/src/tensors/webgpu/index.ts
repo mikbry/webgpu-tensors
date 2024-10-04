@@ -81,6 +81,7 @@ export interface WebGPUInstance {
 }
 
 export default class WebGPUTensors implements Tensors {
+  device: Device;
   static _instance?: WebGPUInstance;
 
   commands: Array<GPUCommandBuffer>;
@@ -89,6 +90,7 @@ export default class WebGPUTensors implements Tensors {
   constructor() {
     this.commands = [];
     this.hasComputeOnce = false;
+    this.device = Device.GPU;
   }
 
   static isAvailable(): boolean {

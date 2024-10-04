@@ -99,8 +99,6 @@ pub struct TensorOptions {
     pub readable: bool,
 }
 
-use serde::{Serialize, Deserialize};
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RSTensor {
     data: Vec<f32>,

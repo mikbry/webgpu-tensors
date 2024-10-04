@@ -15,6 +15,7 @@ export type Float32NestedArray = Array<Float32NestedArray> | Float32Array;
 export type Shape = number[];
 
 export interface Tensors {
+  device: Device;
   init(device?: Device): Promise<void>;
   empty(shape: Shape, options?: Partial<TensorOptions> | undefined): Tensor;
   ones(shape: Shape, options?: Partial<TensorOptions> | undefined): Tensor;
@@ -55,6 +56,7 @@ export type TensorOptions = {
   usage: number;
   mappedAtCreation: boolean | undefined;
   readable: boolean;
+  dtype?: DType;
 };
 
 export interface Size {

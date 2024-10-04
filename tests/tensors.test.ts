@@ -2,7 +2,12 @@ import { expect, test, describe, beforeEach } from 'vitest';
 import { device, Tensors, DType, isAvailable } from '@/webgpu-tensors';
 import { Device } from 'packages/core/src/types';
 
-const testTensors = (tensors: Tensors) => {
+const testTensors = (tensors: Tensors, device: Device) => {
+  describe('Tensors', () => {
+    test('Get Tensors Type', () => {
+      expect(tensors.device).toBe(device);
+    });
+  });
   describe('Tensor Operations', () => {
     beforeEach(async () => {
       await tensors.init();
@@ -164,7 +169,7 @@ const testTensors = (tensors: Tensors) => {
 
 describe('WebGPUTensors', () => {
   if (isAvailable(Device.GPU)) {
-    testTensors(device(Device.GPU));
+    testTensors(device(Device.GPU), Device.GPU);
   } else {
     test('No WebGPU Support', async () => {
       expect(isAvailable(Device.GPU)).toBe(false);
@@ -173,5 +178,9 @@ describe('WebGPUTensors', () => {
 });
 
 describe('JSTensors', () => {
-  testTensors(device(Device.CPU));
+  testTensors(device(Device.CPU), Device.CPU);
+});
+
+describe('WASMTensors', () => {
+  testTensors(device(Device.WASM), Device.WASM);
 });

@@ -1,7 +1,7 @@
 import { Tensor, Tensors, Shape, Size, DType, Device, TensorOptions, NestedArray, 
   Float32NestedArray } from '../../types';
   import ShapeSize from '../../size';
-  import * as wasmModule from '@/webgpu-tensors-wasm';
+  import * as wasmModule from '../../../../wasm/webgpu-tensors';
   
   export class WASMTensor implements Tensor {
     _wasmTensor: wasmModule.WASMTensorsImpl;
@@ -43,9 +43,12 @@ import { Tensor, Tensors, Shape, Size, DType, Device, TensorOptions, NestedArray
   }
   
   export class WASMTensors implements Tensors {
+    device: Device;
     private static _instance: wasmModule.WASMTensorsImpl;
   
-    private constructor() {}
+    private constructor() {
+      this.device = Device.WASM;
+    }
 
   
     static create(): Tensors {
