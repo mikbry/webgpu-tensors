@@ -182,6 +182,26 @@ impl WASMTensorsImpl {
         to_value(&result).map_err(|e| e.into())
     }
 
+    #[wasm_bindgen]
+    pub fn item(&self, tensor: JsValue) -> Result<f32, JsValue> {
+        let tensor: RSTensor = from_value(tensor).map_err(|e| e.to_string())?;
+        Ok(self.instance.item(&tensor))
+    }
+
+    #[wasm_bindgen]
+    pub fn mul_scalar(&self, tensor: JsValue, scalar: f32) -> Result<JsValue, JsValue> {
+        let tensor: RSTensor = from_value(tensor).map_err(|e| e.to_string())?;
+        let result = self.instance.mul_scalar(&tensor, scalar);
+        to_value(&result).map_err(|e| e.into())
+    }
+
+    #[wasm_bindgen]
+    pub fn copy(&self, src: JsValue, dst: JsValue) -> Result<(), JsValue> {
+        let src_tensor: RSTensor = from_value(src).map_err(|e| e.to_string())?;
+        let mut dst_tensor: RSTensor = from_value(dst).map_err(|e| e.to_string())?;
+        self.instance.copy(&src_tensor, &mut dst_tensor).map_err(|e| e.into())
+    }
+
     fn parse_options(&self, options: JsValue) -> TensorOptions {
         let js_options: JSTensorOptions = from_value(options).unwrap_or_else(|_| JSTensorOptions { dtype: None, device: None });
         TensorOptions {
