@@ -3,6 +3,8 @@ use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 #[cfg(target_arch = "wasm32")]
 use webgpu_tensors::{RSTensors, Tensors, RSTensor, TensorOptions};
 use serde::{Serialize, Deserialize};
+
+#[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
 #[derive(Serialize, Deserialize)]

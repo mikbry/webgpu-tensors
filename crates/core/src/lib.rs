@@ -378,14 +378,6 @@ impl Tensors for RSTensors {
     }
 
     fn mul(&self, a: &RSTensor, b: &RSTensor) -> RSTensor {
-        self.mul_impl(a, b)
-    }
-
-    fn mul_scalar(&self, a: &RSTensor, b: f32) -> RSTensor {
-        self.mul_scalar_impl(a, b)
-    }
-
-    fn mul_impl(&self, a: &RSTensor, b: &RSTensor) -> RSTensor {
         assert_eq!(a.shape(), b.shape(), "Tensors must have the same shape for element-wise multiplication");
         let data: Vec<f32> = a.data.iter().zip(b.data.iter()).map(|(&x, &y)| x * y).collect();
         RSTensor {
@@ -397,7 +389,7 @@ impl Tensors for RSTensors {
         }
     }
 
-    fn mul_scalar_impl(&self, a: &RSTensor, b: f32) -> RSTensor {
+    fn mul_scalar(&self, a: &RSTensor, b: f32) -> RSTensor {
         let data: Vec<f32> = a.data.iter().map(|&x| x * b).collect();
         RSTensor {
             data,
