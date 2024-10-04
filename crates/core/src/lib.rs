@@ -2,14 +2,15 @@ use std::fmt;
 use rand::Rng;
 use rand::distributions::{Distribution, Standard};
 use std::convert::From;
+use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum DType {
     Float32,
     // Add other data types as needed
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum Device {
     GPU,
     CPU,
@@ -17,7 +18,7 @@ pub enum Device {
 
 pub type Shape = Vec<usize>;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Size {
     data: Vec<usize>,
 }
