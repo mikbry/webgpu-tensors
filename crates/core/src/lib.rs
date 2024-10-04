@@ -211,6 +211,10 @@ impl Tensor for RSTensor {
     fn read_float32(&self) -> Result<Vec<f32>, &'static str> {
         self.read_array()
     }
+
+    fn read_float32(&self) -> Result<Vec<f32>, &'static str> {
+        self.read_array()
+    }
 }
 
 pub struct RSTensors;

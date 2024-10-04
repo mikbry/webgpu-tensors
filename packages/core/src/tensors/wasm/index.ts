@@ -19,12 +19,12 @@ import { Tensor, Tensors, Shape, Size, DType, Device, TensorOptions, NestedArray
     }
   
     async readArray<T>(_options?: { mode?: 1 | undefined }): Promise<NestedArray<T>> {
-      const result = await WASMTensors._instance.read_array(this._wasmTensor);
+      const result = await WASMTensors.getInstance().read_array(this._wasmTensor);
       return result as NestedArray<T>;
     }
   
     async readFloat32(_options?: { mode?: 1 | undefined }): Promise<Float32NestedArray> {
-      const result = await WASMTensors._instance.read_float32(this._wasmTensor);
+      const result = await WASMTensors.getInstance().read_float32(this._wasmTensor);
       return result as Float32NestedArray;
     }
   
@@ -43,9 +43,16 @@ import { Tensor, Tensors, Shape, Size, DType, Device, TensorOptions, NestedArray
   export class WASMTensors implements Tensors {
     device: Device;
     private static _instance: wasmModule.WASMTensorsImpl;
-  
+
     private constructor() {
       this.device = Device.WASM;
+    }
+
+    public static getInstance(): wasmModule.WASMTensorsImpl {
+      if (!WASMTensors._instance) {
+        WASMTensors._instance = new wasmModule.WASMTensorsImpl();
+      }
+      return WASMTensors._instance;
     }
 
   
