@@ -1,13 +1,14 @@
 #[cfg(target_arch = "wasm32")]
-use wasm_bindgen::{prelude::wasm_bindgen, JsCast, JsValue, UnwrapThrowExt};
+use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 #[cfg(target_arch = "wasm32")]
-use webgpu_tensors::{RSTensors, Tensors, RSTensor, Shape, TensorOptions};
+use webgpu_tensors::{RSTensors, Tensors, RSTensor, TensorOptions};
 use serde::{Serialize, Deserialize};
+use wasm_bindgen::prelude::*;
 
 #[derive(Serialize, Deserialize)]
-struct JSTensorOptions {
-    dtype: Option<String>,
-    device: Option<String>,
+pub struct JSTensorOptions {
+    pub dtype: Option<String>,
+    pub device: Option<String>,
 }
 
 #[cfg(target_arch = "wasm32")]
