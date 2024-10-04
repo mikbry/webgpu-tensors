@@ -59,7 +59,6 @@ pub trait Tensor {
 }
 
 pub trait Tensors {
-    fn create_nested_array(&self, data: &[f32], shape: &[usize]) -> Vec<Vec<f32>>;
     fn clone(&self, tensor: &RSTensor) -> RSTensor;
     fn sigmoid(&self, tensor: &RSTensor) -> RSTensor;
     fn item(&self, tensor: &RSTensor) -> f32;
@@ -203,7 +202,7 @@ impl Tensor for RSTensor {
 
     fn read_array(&self) -> Result<Vec<f32>, &'static str> {
         if self.readable {
-            Ok(create_nested_array(&self.data, &self.shape.data))
+            Ok(self.data.clone())
         } else {
             Err("Tensor is not readable")
         }
@@ -216,28 +215,6 @@ impl Tensor for RSTensor {
             Err("Tensor is not readable")
         }
     }
-}
-
-fn create_nested_array(data: &[f32], shape: &[usize]) -> Vec<Vec<f32>> {
-    if shape.len() == 1 {
-        return vec![data.to_vec()];
-    }
-
-    let mut result = Vec::new();
-    let sub_size: usize = shape[1..].iter().product();
-    
-    for i in 0..shape[0] {
-        let start = i * sub_size;
-        let end = start + sub_size;
-        let sub_array = create_nested_array(&data[start..end], &shape[1..]);
-        result.extend(sub_array);
-    }
-
-    result
-}
-
-fn create_nested_array_wrapper(data: &[f32], shape: &[usize]) -> Vec<Vec<f32>> {
-    create_nested_array(data, shape)
 }
 
 pub struct RSTensors;
@@ -315,10 +292,6 @@ impl Tensors for RSTensors {
             device: Device::CPU,
             readable: true,
         }
-    }
-
-    fn create_nested_array(&self, data: &[f32], shape: &[usize]) -> Vec<Vec<f32>> {
-        create_nested_array_wrapper(data, shape)
     }
 
     fn tensor<T: Into<RSTensor>>(&self, array: T, _options: Option<TensorOptions>) -> RSTensor {
