@@ -313,7 +313,7 @@ impl Tensors for RSTensors {
             data: vec![0.0; size.size()],
             shape: size,
             dtype: DType::Float32,
-            device: Device::CPU,
+            device: Device::CPU,Vec<f32>
             readable: true,
         }
     }
