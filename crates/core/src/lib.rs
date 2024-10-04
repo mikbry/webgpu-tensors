@@ -178,11 +178,11 @@ impl fmt::Display for RSTensor {
             result.push('[');
             for i in 0..dim {
                 if i > 0 {
-                    result.push_str(", ");
+                    result.push_str(",");
                 }
                 if depth > 0 {
-                    result.push('\n');
-                    result.push_str(&"  ".repeat(depth));
+                    // result.push('\n');
+                    result.push_str(&"".repeat(depth));
                 }
                 let start = i * sub_size;
                 let end = start + sub_size;
