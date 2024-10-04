@@ -21,6 +21,7 @@ deno run ./examples/ex1.ts
 ```bash
 npm run dev
 ```
+
 > It will run on your browser using WebGPU if present, otherwise CPU.
 
 ### Using Rust native

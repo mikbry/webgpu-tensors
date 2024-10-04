@@ -12,6 +12,7 @@ use serde_wasm_bindgen::{to_value, from_value};
 pub struct JSTensorOptions {
     pub dtype: Option<String>,
     pub device: Option<String>,
+    pub shape: Option<Vec<usize>>,
 }
 
 // #[cfg(target_arch = "wasm32")]
@@ -90,6 +91,7 @@ impl WASMTensorsImpl {
     #[wasm_bindgen]
     pub fn tensor(&self, array: JsValue, options: JsValue) -> Result<JsValue, JsValue> {
         let tensor_options = self.parse_options(options);
+        
         let data: Vec<f32> = from_value(array).map_err(|e| e.to_string())?;
         let tensor = self.instance.tensor(data, Some(tensor_options));
         to_value(&tensor).map_err(|e| e.into())
@@ -217,7 +219,7 @@ impl WASMTensorsImpl {
     }
 
     fn parse_options(&self, options: JsValue) -> TensorOptions {
-        let js_options: JSTensorOptions = from_value(options).unwrap_or_else(|_| JSTensorOptions { dtype: None, device: None });
+        let js_options: JSTensorOptions = from_value(options).unwrap_or_else(|_| JSTensorOptions { dtype: None, device: None, shape: None });
         TensorOptions {
             usage: 0, // Set appropriate usage value
             mapped_at_creation: None,

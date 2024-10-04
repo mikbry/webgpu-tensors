@@ -1,8 +1,7 @@
-import ShapeSize, { getShapeSize } from '../../size';
+import ShapeSize from '../../size';
 import {
   Device,
   DType,
-  Float32NestedArray,
   NestedArray,
   Shape,
   Size,
@@ -10,6 +9,7 @@ import {
   TensorOptions,
   Tensors,
 } from '../../types';
+import { stridedToNestedArray, stridedToNestedFloat32Array } from '../../utils';
 
 class JSTensor implements Tensor {
   data: number[];
@@ -26,60 +26,12 @@ class JSTensor implements Tensor {
     this.readable = true;
   }
 
-  private stridedToNestedArray<T>(
-    buffer: T[],
-    dim: number[],
-    offset = 0,
-    depth = 0,
-  ): NestedArray<T> {
-    if (dim.length === 1) {
-      const length = getShapeSize(dim);
-      return buffer.slice(offset, offset + length) as NestedArray<T>;
-    }
-    const array: NestedArray<T> = [];
-    for (let n = 0; n < dim[0]; n++) {
-      const nestedShape = [...dim];
-      nestedShape.shift();
-      const length = getShapeSize(nestedShape);
-      const i = length * n;
-      const nestedArray = this.stridedToNestedArray(buffer, nestedShape, offset + i, depth + 1);
-      array.push(Array.from(nestedArray) as NestedArray<T>);
-    }
-    return array;
-  }
-
-  stridedToNestedFloat32Array<T>(
-    buffer: Array<T>,
-    dim: number[],
-    offset = 0,
-    depth = 0,
-  ): Float32NestedArray {
-    if (dim.length === 1) {
-      const length = getShapeSize(dim);
-      return new Float32Array(buffer.slice(offset, offset + length) as number[]);
-    }
-    const array: Float32NestedArray = [];
-    for (let n = 0; n < dim[0]; n++) {
-      const nestedShape = [...dim];
-      nestedShape.shift();
-      const length = getShapeSize(nestedShape);
-      const i = length * n;
-      const nestedArray = this.stridedToNestedFloat32Array(
-        buffer,
-        nestedShape,
-        offset + i,
-        depth + 1,
-      );
-      array.push(nestedArray);
-    }
-    return array;
-  }
   async readArray<T>(_options?: { mode?: 1 | undefined } | undefined): Promise<NestedArray<T>> {
-    return this.stridedToNestedArray<T>(this.data as T[], this.shape.data);
+    return stridedToNestedArray<T>(this.data as T[], this.shape.data);
   }
 
   async readFloat32(_options?: { mode?: 1 | undefined } | undefined): Promise<Float32Array> {
-    return this.stridedToNestedFloat32Array(this.data, this.shape.data) as Float32Array;
+    return stridedToNestedFloat32Array(this.data, this.shape.data) as Float32Array;
   }
 
   size(dim?: number): Size | number {

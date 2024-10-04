@@ -57,6 +57,7 @@ export type TensorOptions = {
   mappedAtCreation: boolean | undefined;
   readable: boolean;
   dtype?: DType;
+  shape?: number[];
 };
 
 export interface Size {

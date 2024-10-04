@@ -682,7 +682,6 @@ class GPUTensor implements Tensor {
       const arrayBufferTensor = this.buffer.getMappedRange();
       new Float32Array(arrayBufferTensor).set(array);
       this.buffer.unmap();
-      // console.log(this, arrayBufferTensor.byteLength, array);
     }
     return this;
   }

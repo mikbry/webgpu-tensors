@@ -100,6 +100,8 @@ pub struct TensorOptions {
     pub usage: u32,
     pub mapped_at_creation: Option<bool>,
     pub readable: bool,
+    //pub dtype: Option<usize>,
+    //pub shape
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -319,7 +321,8 @@ impl Tensors for RSTensors {
     }
 
     fn tensor<T: Into<RSTensor>>(&self, array: T, _options: Option<TensorOptions>) -> RSTensor {
-        array.into()
+        let t = array.into();
+        t
     }
 
     fn matmul(&self, tensor_a: &RSTensor, tensor_b: &RSTensor) -> RSTensor {
