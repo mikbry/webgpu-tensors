@@ -1,4 +1,6 @@
 use std::fmt;
+use rand::Rng;
+use rand::distributions::{Distribution, Standard};
 
 #[derive(Debug, Clone, Copy)]
 pub enum DType {
@@ -68,6 +70,7 @@ pub trait Tensors {
     fn tensor(&self, array: Vec<f32>, options: Option<TensorOptions>) -> RSTensor;
     fn matmul(&self, tensor_a: &RSTensor, tensor_b: &RSTensor) -> RSTensor;
     fn copy(&self, src: &RSTensor, dst: &mut RSTensor) -> Result<(), &'static str>;
+    fn maximum(&self, tensor: &RSTensor, value: f32) -> RSTensor;
 }
 
 #[macro_export]
@@ -84,8 +87,6 @@ pub struct TensorOptions {
     pub mapped_at_creation: Option<bool>,
     pub readable: bool,
 }
-
-// Implement RSTensor and RSTensors as structs
 
 #[derive(Debug)]
 pub struct RSTensor {
@@ -185,7 +186,6 @@ impl Tensors for RSTensors {
     }
 
     fn rand(&self, shape: Shape, _options: Option<TensorOptions>) -> RSTensor {
-        use rand::Rng;
         let mut rng = rand::thread_rng();
         let size = Size::new(shape.clone());
         RSTensor {
@@ -198,9 +198,7 @@ impl Tensors for RSTensors {
     }
 
     fn randn(&self, shape: Shape, _options: Option<TensorOptions>) -> RSTensor {
-        use rand::distributions::{Distribution, Standard};
-        use rand::thread_rng;
-        let mut rng = thread_rng();
+        let mut rng = rand::thread_rng();
         let size = Size::new(shape.clone());
         RSTensor {
             data: Standard.sample_iter(&mut rng).take(size.size()).collect(),
@@ -268,6 +266,17 @@ impl Tensors for RSTensors {
         }
         dst.data.copy_from_slice(&src.data);
         Ok(())
+    }
+
+    fn maximum(&self, tensor: &RSTensor, value: f32) -> RSTensor {
+        let data = tensor.data.iter().map(|&x| x.max(value)).collect();
+        RSTensor {
+            data,
+            shape: tensor.shape().clone(),
+            dtype: tensor.dtype(),
+            device: tensor.device(),
+            readable: tensor.readable(),
+        }
     }
 }
 
