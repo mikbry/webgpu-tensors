@@ -59,7 +59,7 @@ pub trait Tensor {
 }
 
 pub trait Tensors {
-    fn create_nested_array(&self, data: &[f32], shape: &[usize]) -> Vec<f32>;
+    fn create_nested_array(&self, data: &[f32], shape: &[usize]) -> Vec<Vec<f32>>;
     fn clone(&self, tensor: &RSTensor) -> RSTensor;
     fn sigmoid(&self, tensor: &RSTensor) -> RSTensor;
     fn item(&self, tensor: &RSTensor) -> f32;
@@ -234,6 +234,11 @@ fn create_nested_array(data: &[f32], shape: &[usize]) -> Vec<f32> {
     }
 
     result
+}
+
+fn create_nested_array_wrapper(data: &[f32], shape: &[usize]) -> Vec<Vec<f32>> {
+    let nested = create_nested_array(data, shape);
+    vec![nested]
 }
 
 pub struct RSTensors;
