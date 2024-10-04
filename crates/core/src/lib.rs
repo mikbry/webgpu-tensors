@@ -62,6 +62,7 @@ pub trait Tensors {
     fn gt(&self, tensor: &RSTensor, value: f32) -> RSTensor;
     fn transpose(&self, tensor: &RSTensor) -> RSTensor;
     fn mul(&self, a: &RSTensor, b: &RSTensor) -> RSTensor;
+    fn mul_scalar(&self, a: &RSTensor, b: f32) -> RSTensor;
     fn mean(&self, tensor: &RSTensor) -> RSTensor;
     fn pow(&self, tensor: &RSTensor, exponent: f32) -> RSTensor;
     fn sub(&self, a: &RSTensor, b: &RSTensor) -> RSTensor;
@@ -377,8 +378,27 @@ impl Tensors for RSTensors {
     }
 
     fn mul(&self, a: &RSTensor, b: &RSTensor) -> RSTensor {
+        self.mul_impl(a, b)
+    }
+
+    fn mul_scalar(&self, a: &RSTensor, b: f32) -> RSTensor {
+        self.mul_scalar_impl(a, b)
+    }
+
+    fn mul_impl(&self, a: &RSTensor, b: &RSTensor) -> RSTensor {
         assert_eq!(a.shape(), b.shape(), "Tensors must have the same shape for element-wise multiplication");
         let data: Vec<f32> = a.data.iter().zip(b.data.iter()).map(|(&x, &y)| x * y).collect();
+        RSTensor {
+            data,
+            shape: a.shape().clone(),
+            dtype: a.dtype(),
+            device: a.device(),
+            readable: a.readable(),
+        }
+    }
+
+    fn mul_scalar_impl(&self, a: &RSTensor, b: f32) -> RSTensor {
+        let data: Vec<f32> = a.data.iter().map(|&x| x * b).collect();
         RSTensor {
             data,
             shape: a.shape().clone(),
