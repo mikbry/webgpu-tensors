@@ -1,4 +1,4 @@
-use webgpu_tensors::{RSTensors, Tensors, Tensor, tensors_println};
+use webgpu_tensors::{RSTensors, Tensors, RSTensor, Tensor, tensors_println};
 use std::time::Instant;
 
 struct SimpleNN {

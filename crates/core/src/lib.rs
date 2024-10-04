@@ -58,6 +58,14 @@ pub trait Tensor {
 }
 
 pub trait Tensors {
+    fn item(&self, tensor: &RSTensor) -> f32;
+    fn gt(&self, tensor: &RSTensor, value: f32) -> RSTensor;
+    fn transpose(&self, tensor: &RSTensor) -> RSTensor;
+    fn mul(&self, a: &RSTensor, b: &RSTensor) -> RSTensor;
+    fn mean(&self, tensor: &RSTensor) -> RSTensor;
+    fn pow(&self, tensor: &RSTensor, exponent: f32) -> RSTensor;
+    fn sub(&self, a: &RSTensor, b: &RSTensor) -> RSTensor;
+    fn relu(&self, tensor: &RSTensor) -> RSTensor;
     fn init(&mut self, device: Option<Device>) -> Result<(), &'static str>;
     fn reset(&mut self);
     fn compute(&mut self);
