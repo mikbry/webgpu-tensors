@@ -218,9 +218,9 @@ impl Tensor for RSTensor {
     }
 }
 
-fn create_nested_array(data: &[f32], shape: &[usize]) -> Vec<f32> {
+fn create_nested_array(data: &[f32], shape: &[usize]) -> Vec<Vec<f32>> {
     if shape.len() == 1 {
-        return data.to_vec();
+        return vec![data.to_vec()];
     }
 
     let mut result = Vec::new();
@@ -230,15 +230,14 @@ fn create_nested_array(data: &[f32], shape: &[usize]) -> Vec<f32> {
         let start = i * sub_size;
         let end = start + sub_size;
         let sub_array = create_nested_array(&data[start..end], &shape[1..]);
-        result.push(sub_array);
+        result.extend(sub_array);
     }
 
     result
 }
 
 fn create_nested_array_wrapper(data: &[f32], shape: &[usize]) -> Vec<Vec<f32>> {
-    let nested = create_nested_array(data, shape);
-    vec![nested]
+    create_nested_array(data, shape)
 }
 
 pub struct RSTensors;
