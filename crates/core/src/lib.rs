@@ -48,6 +48,7 @@ impl fmt::Display for Size {
 }
 
 pub trait Tensor {
+    fn read_float32(&self) -> Result<Vec<f32>, &'static str>;
     fn shape(&self) -> &Size;
     fn dtype(&self) -> DType;
     fn device(&self) -> Device;
@@ -55,7 +56,6 @@ pub trait Tensor {
     fn size(&self, dim: Option<usize>) -> Result<usize, &'static str>;
     fn numel(&self) -> usize;
     fn read_array(&self) -> Result<Vec<f32>, &'static str>;
-    fn read_float32(&self) -> Result<Vec<f32>, &'static str>;
 }
 
 pub trait Tensors {
@@ -212,9 +212,6 @@ impl Tensor for RSTensor {
         self.read_array()
     }
 
-    fn read_float32(&self) -> Result<Vec<f32>, &'static str> {
-        self.read_array()
-    }
 }
 
 pub struct RSTensors;
