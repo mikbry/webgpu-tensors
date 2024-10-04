@@ -1,4 +1,4 @@
-use core::{RSTensors, Tensors, Tensor};
+use webgpu_tensors::{RSTensors, Tensors, Tensor};
 
 fn main() {
     let mut tensors = RSTensors;

@@ -4,9 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-webgpu-tensors-cli = { path = "./crates/cli" }
 webgpu-tensors = { path = "./crates/core" }
-webgpu-tensors-wasm = { path = "./crates/wasm" }
+
+[dev-dependencies]
+webgpu-tensors = { path = "./crates/core" }
 
 [workspace]
 members = [
@@ -14,5 +15,9 @@ members = [
     "crates/core",
     "crates/wasm",
 ]
+
+[[example]]
+name = "ex1"
+path = "examples/ex1.rs"
 
 [workspace.dependencies]
