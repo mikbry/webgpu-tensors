@@ -237,14 +237,9 @@ impl Tensors for RSTensors {
         let a = tensor_a.shape();
         let b = tensor_b.shape();
 
-        // Check if the tensors can be multiplied
-        if a.length() != 2 || b.length() != 2 || a.get_dim(1) != b.get_dim(0) {
-            panic!("Invalid tensor shapes for matrix multiplication");
-        }
-
         let m = a.get_dim(0).unwrap();
-        let n = a.get_dim(1).unwrap();
-        let p = b.get_dim(1).unwrap();
+        let n = a.get_dim(1).unwrap_or(0);
+        let p = b.get_dim(1).unwrap_or(0);
 
         let mut result = vec![0.0; m * p];
 

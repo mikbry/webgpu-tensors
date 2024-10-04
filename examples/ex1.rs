@@ -5,26 +5,21 @@ fn main() {
     t.init(None).unwrap();
 
     let x = t.rand(vec![5, 3], None);
-    println!("Random 5x3 tensor:");
     println!("{}", x);
 
     let x = t.ones(vec![5, 3], None);
-    println!("5x3 tensor of ones:");
     println!("{}", x);
 
     let x = t.rand(vec![5, 3], None);
-    println!("Another random 5x3 tensor:");
     println!("{}", x);
 
     let x = t.tensor(vec![0.0, 1.0, 2.0, 3.0], None);
-    println!("1D tensor:");
     println!("{}", x);
 
     let x = t.tensor(vec![
         vec![0.0, 1.0, 2.0, 3.0],
         vec![3.0, 4.0, 5.0, 6.0],
     ], None);
-    println!("2D tensor:");
     println!("{}", x);
 
     let x = t.tensor(vec![
@@ -37,7 +32,6 @@ fn main() {
             vec![5.0, 6.0],
         ],
     ], None);
-    println!("3D tensor:");
     println!("{}", x);
 
     let x = t.tensor(vec![
