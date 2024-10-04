@@ -234,17 +234,28 @@ impl Tensors for RSTensors {
 
     fn matmul(&self, tensor_a: &RSTensor, tensor_b: &RSTensor) -> RSTensor {
         // Implement matrix multiplication
-        // This is a simplified version and doesn't handle all cases
         let a = tensor_a.shape();
         let b = tensor_b.shape();
+
+        // Check if the tensors can be multiplied
+        if a.length() != 2 || b.length() != 2 || a.get_dim(1) != b.get_dim(0) {
+            panic!("Invalid tensor shapes for matrix multiplication");
+        }
+
         let m = a.get_dim(0).unwrap();
-        let _n = a.get_dim(1).unwrap();
+        let n = a.get_dim(1).unwrap();
         let p = b.get_dim(1).unwrap();
 
-        let result = vec![0.0; m * p];
+        let mut result = vec![0.0; m * p];
 
-        // Implement the actual matrix multiplication here
-        // For simplicity, we're not implementing the actual algorithm
+        // Implement the actual matrix multiplication
+        for i in 0..m {
+            for j in 0..p {
+                for k in 0..n {
+                    result[i * p + j] += tensor_a.data[i * n + k] * tensor_b.data[k * p + j];
+                }
+            }
+        }
 
         RSTensor {
             data: result,
