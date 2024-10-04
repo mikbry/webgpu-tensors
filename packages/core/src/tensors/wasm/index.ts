@@ -78,22 +78,22 @@ import { Tensor, Tensors, Shape, Size, DType, Device, TensorOptions, NestedArray
     }
   
     empty(shape: Shape, options?: Partial<TensorOptions>): Tensor {
-      const wasmTensor = WASMTensors._instance.empty(shape, options);
+      const wasmTensor = WASMTensors._instance.empty(new Uint32Array(shape), options);
       return new WASMTensor(wasmTensor, shape, options?.dtype);
     }
 
     ones(shape: Shape, options?: Partial<TensorOptions>): Tensor {
-      const wasmTensor = WASMTensors._instance.ones(shape, options);
+      const wasmTensor = WASMTensors._instance.ones(new Uint32Array(shape), options);
       return new WASMTensor(wasmTensor, shape, options?.dtype);
     }
 
     rand(shape: Shape, options?: Partial<TensorOptions>): Tensor {
-      const wasmTensor = WASMTensors._instance.rand(shape, options);
+      const wasmTensor = WASMTensors._instance.rand(new Uint32Array(shape), options);
       return new WASMTensor(wasmTensor, shape, options?.dtype);
     }
 
     zeros(shape: Shape, options?: Partial<TensorOptions>): Tensor {
-      const wasmTensor = WASMTensors._instance.zeros(shape, options);
+      const wasmTensor = WASMTensors._instance.zeros(new Uint32Array(shape), options);
       return new WASMTensor(wasmTensor, shape, options?.dtype);
     }
 
@@ -188,7 +188,7 @@ import { Tensor, Tensors, Shape, Size, DType, Device, TensorOptions, NestedArray
     }
 
     randn(shape: Shape, options?: Partial<TensorOptions>): Tensor {
-      const wasmTensor = WASMTensors._instance.randn(shape, options);
+      const wasmTensor = WASMTensors._instance.randn(new Uint32Array(shape), options);
       return new WASMTensor(wasmTensor, shape, options?.dtype);
     }
 
