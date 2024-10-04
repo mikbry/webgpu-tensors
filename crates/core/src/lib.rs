@@ -59,6 +59,7 @@ pub trait Tensor {
 }
 
 pub trait Tensors {
+    fn clone(&self, tensor: &RSTensor) -> RSTensor;
     fn sigmoid(&self, tensor: &RSTensor) -> RSTensor;
     fn item(&self, tensor: &RSTensor) -> f32;
     fn gt(&self, tensor: &RSTensor, value: f32) -> RSTensor;
