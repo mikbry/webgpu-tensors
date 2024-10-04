@@ -84,6 +84,7 @@ pub trait Tensors {
     fn matmul(&self, tensor_a: &RSTensor, tensor_b: &RSTensor) -> RSTensor;
     fn copy(&self, src: &RSTensor, dst: &mut RSTensor) -> Result<(), &'static str>;
     fn maximum(&self, tensor: &RSTensor, value: f32) -> RSTensor;
+    fn max(&self, tensor: &RSTensor) -> RSTensor;
 }
 
 #[macro_export]
