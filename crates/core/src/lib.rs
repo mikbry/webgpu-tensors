@@ -50,6 +50,8 @@ pub trait Tensor {
     fn readable(&self) -> bool;
     fn size(&self, dim: Option<usize>) -> Result<usize, &'static str>;
     fn numel(&self) -> usize;
+    fn read_array(&self) -> Result<Vec<f32>, &'static str>;
+    fn read_float32(&self) -> Result<Vec<f32>, &'static str>;
 }
 
 pub trait Tensors {
@@ -125,6 +127,18 @@ impl Tensor for RSTensor {
 
     fn numel(&self) -> usize {
         self.shape.size()
+    }
+
+    fn read_array(&self) -> Result<Vec<f32>, &'static str> {
+        if self.readable {
+            Ok(self.data.clone())
+        } else {
+            Err("Tensor is not readable")
+        }
+    }
+
+    fn read_float32(&self) -> Result<Vec<f32>, &'static str> {
+        self.read_array()
     }
 }
 
