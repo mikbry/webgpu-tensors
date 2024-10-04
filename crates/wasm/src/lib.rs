@@ -50,31 +50,30 @@ impl WASMTensorsImpl {
     }
 
     #[wasm_bindgen]
-    pub fn randn(&self, shape: Vec<usize>, options: JsValue) -> Result<JsValue, 
-JsValue> {
-        let js_options: JSTensorOptions = 
-options.into_serde().unwrap_or(JSTensorOptions { dtype: None, device: None });
+    pub fn randn(&self, shape: Vec<usize>, options: JsValue) -> Result<JsValue, JsValue> {
+        let js_options: JSTensorOptions = options.into_serde().unwrap_or_else(|_| JSTensorOptions { dtype: None, device: None });
         let tensor_options = TensorOptions {
-            dtype: js_options.dtype.map(|d| d.parse().unwrap()),
-            device: js_options.device.map(|d| d.parse().unwrap()),
+            usage: 0, // Set appropriate usage value
+            mapped_at_creation: None,
+            readable: true,
         };
         let tensor = self.instance.randn(shape, Some(tensor_options));
-        Ok(JsValue::from_serde(&tensor).unwrap())
+        JsValue::from_serde(&tensor).map_err(|e| e.into())
     }
 
     #[wasm_bindgen]
     pub fn matmul(&self, a: JsValue, b: JsValue) -> Result<JsValue, JsValue> {
-        let tensor_a: RSTensor = a.into_serde().unwrap();
-        let tensor_b: RSTensor = b.into_serde().unwrap();
+        let tensor_a: RSTensor = a.into_serde().map_err(|e| e.to_string())?;
+        let tensor_b: RSTensor = b.into_serde().map_err(|e| e.to_string())?;
         let result = self.instance.matmul(&tensor_a, &tensor_b);
-        Ok(JsValue::from_serde(&result).unwrap())
+        JsValue::from_serde(&result).map_err(|e| e.into())
     }
 
     #[wasm_bindgen]
     pub fn mul(&self, a: JsValue, b: JsValue) -> Result<JsValue, JsValue> {
-        let tensor_a: RSTensor = a.into_serde().unwrap();
-        let tensor_b: RSTensor = b.into_serde().unwrap();
+        let tensor_a: RSTensor = a.into_serde().map_err(|e| e.to_string())?;
+        let tensor_b: RSTensor = b.into_serde().map_err(|e| e.to_string())?;
         let result = self.instance.mul(&tensor_a, &tensor_b);
-        Ok(JsValue::from_serde(&result).unwrap())
+        JsValue::from_serde(&result).map_err(|e| e.into())
     }
 }
