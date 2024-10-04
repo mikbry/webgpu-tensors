@@ -1,20 +1,20 @@
-use webgpu_tensors::{RSTensors, Tensors, tensors_println as println};
+use webgpu_tensors::{RSTensors, Tensors, tensors_println};
 
 fn main() {
     let mut t = RSTensors;
     t.init(None).unwrap();
 
     let x = t.rand(vec![5, 3], None);
-    println!("{}", x);
+    tensors_println!("{}", x);
 
     let x = t.ones(vec![5, 3], None);
-    println!("{}", x);
+    tensors_println!("{}", x);
 
     let x = t.rand(vec![5, 3], None);
-    println!("{}", x);
+    tensors_println!("{}", x);
 
     let x = t.tensor(vec![0.0, 1.0, 2.0, 3.0], None);
-    println!("{}", x);
+    tensors_println!("{}", x);
 
     let x = t.tensor(vec![
         vec![0.0, 1.0, 2.0, 3.0],

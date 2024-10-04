@@ -73,7 +73,8 @@ pub trait Tensors {
 #[macro_export]
 macro_rules! tensors_println {
     ($($arg:tt)*) => {
-        println!($($arg)*);
+        print!($($arg)*);
+        println!();
     };
 }
 
