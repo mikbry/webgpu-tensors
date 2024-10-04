@@ -98,7 +98,9 @@ pub struct TensorOptions {
     pub readable: bool,
 }
 
-#[derive(Debug)]
+use serde::{Serialize, Deserialize};
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RSTensor {
     data: Vec<f32>,
     shape: Size,

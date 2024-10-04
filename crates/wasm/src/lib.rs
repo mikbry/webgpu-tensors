@@ -1,11 +1,8 @@
 #[cfg(target_arch = "wasm32")]
-use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
-#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
 use webgpu_tensors::{RSTensors, Tensors, RSTensor, TensorOptions};
 use serde::{Serialize, Deserialize};
-
-#[cfg(target_arch = "wasm32")]
-use wasm_bindgen::prelude::*;
+use serde_wasm_bindgen::{to_value, from_value};
 
 #[derive(Serialize, Deserialize)]
 pub struct JSTensorOptions {
@@ -53,29 +50,29 @@ impl WASMTensorsImpl {
 
     #[wasm_bindgen]
     pub fn randn(&self, shape: Vec<usize>, options: JsValue) -> Result<JsValue, JsValue> {
-        let js_options: JSTensorOptions = options.into_serde().unwrap_or_else(|_| JSTensorOptions { dtype: None, device: None });
+        let js_options: JSTensorOptions = from_value(options).unwrap_or_else(|_| JSTensorOptions { dtype: None, device: None });
         let tensor_options = TensorOptions {
             usage: 0, // Set appropriate usage value
             mapped_at_creation: None,
             readable: true,
         };
         let tensor = self.instance.randn(shape, Some(tensor_options));
-        JsValue::from_serde(&tensor).map_err(|e| e.into())
+        to_value(&tensor).map_err(|e| e.into())
     }
 
     #[wasm_bindgen]
     pub fn matmul(&self, a: JsValue, b: JsValue) -> Result<JsValue, JsValue> {
-        let tensor_a: RSTensor = a.into_serde().map_err(|e| e.to_string())?;
-        let tensor_b: RSTensor = b.into_serde().map_err(|e| e.to_string())?;
+        let tensor_a: RSTensor = from_value(a).map_err(|e| e.to_string())?;
+        let tensor_b: RSTensor = from_value(b).map_err(|e| e.to_string())?;
         let result = self.instance.matmul(&tensor_a, &tensor_b);
-        JsValue::from_serde(&result).map_err(|e| e.into())
+        to_value(&result).map_err(|e| e.into())
     }
 
     #[wasm_bindgen]
     pub fn mul(&self, a: JsValue, b: JsValue) -> Result<JsValue, JsValue> {
-        let tensor_a: RSTensor = a.into_serde().map_err(|e| e.to_string())?;
-        let tensor_b: RSTensor = b.into_serde().map_err(|e| e.to_string())?;
+        let tensor_a: RSTensor = from_value(a).map_err(|e| e.to_string())?;
+        let tensor_b: RSTensor = from_value(b).map_err(|e| e.to_string())?;
         let result = self.instance.mul(&tensor_a, &tensor_b);
-        JsValue::from_serde(&result).map_err(|e| e.into())
+        to_value(&result).map_err(|e| e.into())
     }
 }
