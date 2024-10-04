@@ -18,16 +18,14 @@ import { Tensor, Tensors, Shape, Size, DType, Device, TensorOptions, NestedArray
       this.readable = true;
     }
   
-    async readArray<T>(_options?: { mode?: 1 | undefined }): Promise<NestedArray<T>>
-  {
-      // Implement this method using the WASM module
-      throw new Error('Method not implemented.');
+    async readArray<T>(_options?: { mode?: 1 | undefined }): Promise<NestedArray<T>> {
+      const result = await WASMTensors._instance.read_array(this._wasmTensor);
+      return result as NestedArray<T>;
     }
   
-    async readFloat32(_options?: { mode?: 1 | undefined }): 
-  Promise<Float32NestedArray> {
-      // Implement this method using the WASM module
-      throw new Error('Method not implemented.');
+    async readFloat32(_options?: { mode?: 1 | undefined }): Promise<Float32NestedArray> {
+      const result = await WASMTensors._instance.read_float32(this._wasmTensor);
+      return result as Float32NestedArray;
     }
   
     size(dim?: number): Size | number {
