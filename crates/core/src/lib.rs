@@ -459,6 +459,17 @@ impl Tensors for RSTensors {
         assert_eq!(tensor.numel(), 1, "Tensor must contain a single element");
         tensor.data[0]
     }
+
+    fn max(&self, tensor: &RSTensor) -> RSTensor {
+        let max_value = tensor.data.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+        RSTensor {
+            data: vec![max_value],
+            shape: Size::new(vec![1]),
+            dtype: tensor.dtype(),
+            device: tensor.device(),
+            readable: tensor.readable(),
+        }
+    }
 }
 
 #[cfg(test)]
