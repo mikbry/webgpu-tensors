@@ -390,6 +390,17 @@ impl Tensors for RSTensors {
         }
     }
 
+    fn sigmoid(&self, tensor: &RSTensor) -> RSTensor {
+        let data: Vec<f32> = tensor.data.iter().map(|&x| 1.0 / (1.0 + (-x).exp())).collect();
+        RSTensor {
+            data,
+            shape: tensor.shape().clone(),
+            dtype: tensor.dtype(),
+            device: tensor.device(),
+            readable: tensor.readable(),
+        }
+    }
+
     fn mul_scalar(&self, a: &RSTensor, b: f32) -> RSTensor {
         let data: Vec<f32> = a.data.iter().map(|&x| x * b).collect();
         RSTensor {
