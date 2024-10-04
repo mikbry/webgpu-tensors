@@ -328,6 +328,93 @@ impl Tensors for RSTensors {
             readable: tensor.readable(),
         }
     }
+
+    fn relu(&self, tensor: &RSTensor) -> RSTensor {
+        self.maximum(tensor, 0.0)
+    }
+
+    fn sub(&self, a: &RSTensor, b: &RSTensor) -> RSTensor {
+        assert_eq!(a.shape(), b.shape(), "Tensors must have the same shape for subtraction");
+        let data: Vec<f32> = a.data.iter().zip(b.data.iter()).map(|(&x, &y)| x - y).collect();
+        RSTensor {
+            data,
+            shape: a.shape().clone(),
+            dtype: a.dtype(),
+            device: a.device(),
+            readable: a.readable(),
+        }
+    }
+
+    fn pow(&self, tensor: &RSTensor, exponent: f32) -> RSTensor {
+        let data: Vec<f32> = tensor.data.iter().map(|&x| x.powf(exponent)).collect();
+        RSTensor {
+            data,
+            shape: tensor.shape().clone(),
+            dtype: tensor.dtype(),
+            device: tensor.device(),
+            readable: tensor.readable(),
+        }
+    }
+
+    fn mean(&self, tensor: &RSTensor) -> RSTensor {
+        let sum: f32 = tensor.data.iter().sum();
+        let mean = sum / tensor.numel() as f32;
+        RSTensor {
+            data: vec![mean],
+            shape: Size::new(vec![1]),
+            dtype: tensor.dtype(),
+            device: tensor.device(),
+            readable: tensor.readable(),
+        }
+    }
+
+    fn mul(&self, a: &RSTensor, b: &RSTensor) -> RSTensor {
+        assert_eq!(a.shape(), b.shape(), "Tensors must have the same shape for element-wise multiplication");
+        let data: Vec<f32> = a.data.iter().zip(b.data.iter()).map(|(&x, &y)| x * y).collect();
+        RSTensor {
+            data,
+            shape: a.shape().clone(),
+            dtype: a.dtype(),
+            device: a.device(),
+            readable: a.readable(),
+        }
+    }
+
+    fn transpose(&self, tensor: &RSTensor) -> RSTensor {
+        let shape = tensor.shape();
+        assert_eq!(shape.length(), 2, "Transpose is only implemented for 2D tensors");
+        let rows = shape.get_dim(0).unwrap();
+        let cols = shape.get_dim(1).unwrap();
+        let mut data = vec![0.0; rows * cols];
+        for i in 0..rows {
+            for j in 0..cols {
+                data[j * rows + i] = tensor.data[i * cols + j];
+            }
+        }
+        RSTensor {
+            data,
+            shape: Size::new(vec![cols, rows]),
+            dtype: tensor.dtype(),
+            device: tensor.device(),
+            readable: tensor.readable(),
+        }
+    }
+
+    fn gt(&self, tensor: &RSTensor, value: f32) -> RSTensor {
+        let data: Vec<f32> = tensor.data.iter().map(|&x| if x > value { 1.0 } else { 0.0 }).collect();
+        RSTensor {
+            data,
+            shape: tensor.shape().clone(),
+            dtype: tensor.dtype(),
+            device: tensor.device(),
+            readable: tensor.readable(),
+        }
+    }
+
+    fn item(&self, tensor: &RSTensor) -> f32 {
+        assert_eq!(tensor.numel(), 1, "Tensor must contain a single element");
+        tensor.data[0]
+    }
 }
 
 #[cfg(test)]
