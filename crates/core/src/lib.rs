@@ -504,10 +504,6 @@ impl Tensors for RSTensors {
     }
 }
 
-impl Tensors for RSTensors {
-    // ... (keep all existing methods)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
