@@ -21,3 +21,4 @@ name = "ex1"
 path = "examples/ex1.rs"
 
 [workspace.dependencies]
+wgpu = { version = "0.17", features = ["webgl"] }
