@@ -12,10 +12,10 @@ macro_rules! to_flat_vec_and_shape {
             }
             shape.push(arr.len());
             if let Some(first) = arr.first() {
-                if let Some(nested) = std::any::Any::downcast_ref::<[T]>(first) {
+                if let Some(nested) = (first as &dyn std::any::Any).downcast_ref::<[T]>() {
                     process_array(nested, shape, flat_vec);
                     for item in arr.iter().skip(1) {
-                        if let Some(nested) = std::any::Any::downcast_ref::<[T]>(item) {
+                        if let Some(nested) = (item as &dyn std::any::Any).downcast_ref::<[T]>() {
                             process_array(nested, shape, flat_vec);
                         }
                     }
