@@ -1,11 +1,11 @@
 // #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 // #[cfg(target_arch = "wasm32")]
-use webgpu_tensors::{RSTensors, Tensors, RSTensor, Tensor, TensorOptions};
+use webgpu_tensors::{RSTensor, RSTensors, Tensor, TensorOptions, Tensors};
 // #[cfg(target_arch = "wasm32")]
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 // #[cfg(target_arch = "wasm32")]
-use serde_wasm_bindgen::{to_value, from_value};
+use serde_wasm_bindgen::{from_value, to_value};
 
 // #[cfg(target_arch = "wasm32")]
 #[derive(Serialize, Deserialize)]
@@ -15,6 +15,11 @@ pub struct JSTensorOptions {
     pub shape: Option<Vec<usize>>,
 }
 
+impl JSTensorOptions {
+    fn to_options(&self) -> TensorOptions {
+        TensorOptions::default()
+    }
+}
 // #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
 pub struct WASMTensorsImpl {
@@ -30,7 +35,10 @@ impl WASMTensorsImpl {
     // #[cfg(target_arch = "wasm32")]
     #[wasm_bindgen(constructor)]
     pub fn new() -> WASMTensorsImpl {
-        WASMTensorsImpl { instance: RSTensors, device_type: 0 }
+        WASMTensorsImpl {
+            instance: RSTensors::new(webgpu_tensors::Device::CPU),
+            device_type: 0,
+        }
     }
 
     #[inline]
@@ -56,44 +64,44 @@ impl WASMTensorsImpl {
     #[wasm_bindgen]
     pub fn empty(&self, shape: Vec<usize>, options: JsValue) -> Result<JsValue, JsValue> {
         let tensor_options = self.parse_options(options);
-        let tensor = self.instance.empty(shape, Some(tensor_options));
+        let tensor = self.instance.empty(shape, Some(tensor_options.to_options()));
         to_value(&tensor).map_err(|e| e.into())
     }
 
     #[wasm_bindgen]
     pub fn ones(&self, shape: Vec<usize>, options: JsValue) -> Result<JsValue, JsValue> {
         let tensor_options = self.parse_options(options);
-        let tensor = self.instance.ones(shape, Some(tensor_options));
+        let tensor = self.instance.ones(shape, Some(tensor_options.to_options()));
         to_value(&tensor).map_err(|e| e.into())
     }
 
     #[wasm_bindgen]
     pub fn rand(&self, shape: Vec<usize>, options: JsValue) -> Result<JsValue, JsValue> {
         let tensor_options = self.parse_options(options);
-        let tensor = self.instance.rand(shape, Some(tensor_options));
+        let tensor = self.instance.rand(shape, Some(tensor_options.to_options()));
         to_value(&tensor).map_err(|e| e.into())
     }
 
     #[wasm_bindgen]
     pub fn randn(&self, shape: Vec<usize>, options: JsValue) -> Result<JsValue, JsValue> {
         let tensor_options = self.parse_options(options);
-        let tensor = self.instance.randn(shape, Some(tensor_options));
+        let tensor = self.instance.randn(shape, Some(tensor_options.to_options()));
         to_value(&tensor).map_err(|e| e.into())
     }
 
     #[wasm_bindgen]
     pub fn zeros(&self, shape: Vec<usize>, options: JsValue) -> Result<JsValue, JsValue> {
         let tensor_options = self.parse_options(options);
-        let tensor = self.instance.zeros(shape, Some(tensor_options));
+        let tensor = self.instance.zeros(shape, Some(tensor_options.to_options()));
         to_value(&tensor).map_err(|e| e.into())
     }
 
     #[wasm_bindgen]
     pub fn tensor(&self, array: JsValue, options: JsValue) -> Result<JsValue, JsValue> {
         let tensor_options = self.parse_options(options);
-        
+        let shape = tensor_options.shape.clone();
         let data: Vec<f32> = from_value(array).map_err(|e| e.to_string())?;
-        let tensor = self.instance.tensor(data, Some(tensor_options));
+        let tensor = self.instance.tensor(data, shape, Some(tensor_options.to_options()));
         to_value(&tensor).map_err(|e| e.into())
     }
 
@@ -201,7 +209,9 @@ impl WASMTensorsImpl {
     pub fn copy(&self, src: JsValue, dst: JsValue) -> Result<(), JsValue> {
         let src_tensor: RSTensor = from_value(src).map_err(|e| e.to_string())?;
         let mut dst_tensor: RSTensor = from_value(dst).map_err(|e| e.to_string())?;
-        self.instance.copy(&src_tensor, &mut dst_tensor).map_err(|e| e.into())
+        self.instance
+            .copy(&src_tensor, &mut dst_tensor)
+            .map_err(|e| e.into())
     }
 
     #[wasm_bindgen]
@@ -218,12 +228,11 @@ impl WASMTensorsImpl {
         to_value(&result).map_err(|e| e.into())
     }
 
-    fn parse_options(&self, options: JsValue) -> TensorOptions {
-        let js_options: JSTensorOptions = from_value(options).unwrap_or_else(|_| JSTensorOptions { dtype: None, device: None, shape: None });
-        TensorOptions {
-            usage: 0, // Set appropriate usage value
-            mapped_at_creation: None,
-            readable: true,
-        }
+    fn parse_options(&self, options: JsValue) -> JSTensorOptions {
+        from_value(options).unwrap_or_else(|_| JSTensorOptions {
+            dtype: None,
+            device: None,
+            shape: None,
+        })
     }
 }

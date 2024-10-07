@@ -1,4 +1,4 @@
-use webgpu_tensors::{RSTensors, Tensors, RSTensor, Tensor, tensors_println};
+use webgpu_tensors::{tensors_println, Device, RSTensor, RSTensors, Tensor, Tensors};
 use std::time::Instant;
 
 struct SimpleNN {
@@ -25,7 +25,7 @@ impl SimpleNN {
 }
 
 fn main() {
-    let mut t = RSTensors;
+    let mut t = RSTensors::new(Device::CPU);
     t.init(None).unwrap();
 
     tensors_println!("Train a simple 2-layer neural network");

@@ -1,4 +1,6 @@
-use crate::{Device, DType, RSTensor, Shape, Size, Tensor, TensorOptions, Tensors};
+use std::sync::Arc;
+
+use crate::{DType, Device, RSTensor, Shape, Size, Tensor, TensorBuffer, TensorOptions, Tensors};
 use wgpu::util::DeviceExt;
 
 pub struct WGPUTensors {
@@ -7,6 +9,12 @@ pub struct WGPUTensors {
 }
 
 impl WGPUTensors {
+    
+    pub fn create() -> Arc<WGPUTensors>{
+        let wgpu_tensors = pollster::block_on(async { WGPUTensors::new().await });
+        Arc::new(wgpu_tensors)
+    }
+
     pub async fn new() -> Self {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
@@ -53,12 +61,11 @@ impl Tensors for WGPUTensors {
         });
 
         RSTensor {
-            data: vec![],
             shape: size,
             dtype: DType::Float32,
             device: Device::GPU,
             readable: false,
-            buffer: Some(buffer),
+            buffer: TensorBuffer::GPU(buffer),
         }
     }
 
@@ -72,12 +79,11 @@ impl Tensors for WGPUTensors {
         });
 
         RSTensor {
-            data: vec![],
             shape: size,
             dtype: DType::Float32,
             device: Device::GPU,
             readable: false,
-            buffer: Some(buffer),
+            buffer: TensorBuffer::GPU(buffer),
         }
     }
 
@@ -91,18 +97,22 @@ impl Tensors for WGPUTensors {
         });
 
         RSTensor {
-            data: vec![],
             shape: size,
             dtype: DType::Float32,
             device: Device::GPU,
             readable: false,
-            buffer: Some(buffer),
+            buffer: TensorBuffer::GPU(buffer),
         }
     }
 
-    fn tensor(&self, data: Vec<f32>, shape: Shape, _options: Option<TensorOptions>) -> RSTensor {
-        let size = Size::new(shape.clone());
-        assert_eq!(data.len(), size.size(), "Data length must match the shape size");
+    fn tensor<T: Into<RSTensor>>(&self, array: T, shape: Option<Shape>, _options: Option<TensorOptions>) -> RSTensor {
+        let mut t: RSTensor = array.into();
+        match shape {
+            Some(shape) => t.shape.data = shape,
+            None => (),
+        }
+        let  data = t.buffer.into_array();
+        // assert_eq!(data.len(), size.size(), "Data length must match the shape size");
         let buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Tensor"),
             contents: bytemuck::cast_slice(&data),
@@ -110,12 +120,11 @@ impl Tensors for WGPUTensors {
         });
 
         RSTensor {
-            data: vec![],
-            shape: size,
+            shape: t.shape,
             dtype: DType::Float32,
             device: Device::GPU,
             readable: false,
-            buffer: Some(buffer),
+            buffer: TensorBuffer::GPU(buffer),
         }
     }
 
@@ -127,7 +136,7 @@ impl Tensors for WGPUTensors {
             mapped_at_creation: false,
         });
 
-        if let Some(buffer) = &tensor.buffer {
+        if let TensorBuffer::GPU(buffer) = &tensor.buffer {
             let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Clone Encoder"),
             });
@@ -136,13 +145,16 @@ impl Tensors for WGPUTensors {
         }
 
         RSTensor {
-            data: vec![],
             shape: tensor.shape().clone(),
             dtype: tensor.dtype(),
             device: Device::GPU,
             readable: false,
-            buffer: Some(new_buffer),
+            buffer: TensorBuffer::GPU(new_buffer),
         }
+    }
+
+    fn clone_tensor(&self, tensor: &RSTensor) -> RSTensor {
+        self.clone(tensor)
     }
 
     fn matmul(&self, _a: &RSTensor, _b: &RSTensor) -> RSTensor {
@@ -155,5 +167,61 @@ impl Tensors for WGPUTensors {
         // Implement element-wise maximum for GPU tensors
         // This requires writing and executing a compute shader
         unimplemented!("GPU element-wise maximum not yet implemented")
+    }
+    
+    fn randn(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor {
+        todo!()
+    }
+    
+    fn zeros(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor {
+        todo!()
+    }
+    
+    fn copy(&self, src: &RSTensor, dst: &mut RSTensor) -> Result<(), &'static str> {
+        todo!()
+    }
+    
+    fn sigmoid(&self, tensor: &RSTensor) -> RSTensor {
+        todo!()
+    }
+    
+    fn item(&self, tensor: &RSTensor) -> f32 {
+        todo!()
+    }
+    
+    fn gt(&self, tensor: &RSTensor, value: f32) -> RSTensor {
+        todo!()
+    }
+    
+    fn transpose(&self, tensor: &RSTensor) -> RSTensor {
+        todo!()
+    }
+    
+    fn mul(&self, a: &RSTensor, b: &RSTensor) -> RSTensor {
+        todo!()
+    }
+    
+    fn mul_scalar(&self, a: &RSTensor, b: f32) -> RSTensor {
+        todo!()
+    }
+    
+    fn mean(&self, tensor: &RSTensor) -> RSTensor {
+        todo!()
+    }
+    
+    fn pow(&self, tensor: &RSTensor, exponent: f32) -> RSTensor {
+        todo!()
+    }
+    
+    fn sub(&self, a: &RSTensor, b: &RSTensor) -> RSTensor {
+        todo!()
+    }
+    
+    fn relu(&self, tensor: &RSTensor) -> RSTensor {
+        todo!()
+    }
+    
+    fn max(&self, tensor: &RSTensor) -> RSTensor {
+        todo!()
     }
 }

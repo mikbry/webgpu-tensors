@@ -1,43 +1,75 @@
-mod cpu;
-mod webgpu;
+mod tensors;
 
-use std::sync::Arc;
+use std::{fmt, sync::Arc};
 
-pub use crate::cpu::CPUTensors;
-pub use crate::webgpu::WGPUTensors;
+use serde::{Deserialize, Serialize};
+use tensors::{cpu::CPUTensors, webgpu::WGPUTensors};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum Device {
     CPU,
     GPU,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum DType {
     Float32,
 }
 
 pub type Shape = Vec<usize>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Size {
     data: Vec<usize>,
 }
 
 impl Size {
-    pub fn new(shape: Shape) -> Self {
-        Size { data: shape }
+    pub fn new(data: Vec<usize>) -> Self {
+        Size { data }
+    }
+
+    pub fn length(&self) -> usize {
+        self.data.len()
     }
 
     pub fn size(&self) -> usize {
         self.data.iter().product()
     }
+
+    pub fn get_dim(&self, dim: usize) -> Option<usize> {
+        self.data.get(dim).cloned()
+    }
 }
 
-pub struct TensorOptions {
-    dtype: DType,
-    device: Device,
+impl fmt::Display for Size {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.data)
+    }
 }
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TensorOptions {
+    pub usage: usize,
+    pub mapped_at_creation: Option<bool>,
+    pub readable: bool,
+    pub dtype: DType,
+    pub device: Device,
+    pub shape: Option<Shape>,
+}
+
+impl TensorOptions {
+    pub fn default() -> Self {
+        Self {
+            usage: 0,
+            mapped_at_creation: None,
+            readable: true,
+            dtype: DType::Float32,
+            device: Device::CPU,
+            shape: None,
+        }
+    }
+}
+
 
 pub trait Tensor {
     fn shape(&self) -> &Size;
@@ -46,15 +78,34 @@ pub trait Tensor {
     fn readable(&self) -> bool;
     fn numel(&self) -> usize;
     fn size(&self, dim: Option<usize>) -> Option<usize>;
+    fn read_array(&self) -> Result<Vec<f32>, &'static str>;
+    fn read_float32(&self) -> Result<Vec<f32>, &'static str>;
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub enum TensorBuffer {
+    CPU(Vec<f32>),
+    #[serde(skip)]
+    GPU(wgpu::Buffer),
+}
+
+impl TensorBuffer {
+    fn into_array(&self) -> Vec<f32> {
+        match self {
+            TensorBuffer::CPU(vec) => vec.to_vec(),
+            TensorBuffer::GPU(_buffer) => [].to_vec(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RSTensor {
-    pub(crate) data: Vec<f32>,
+    pub(crate) buffer: TensorBuffer,
     pub(crate) shape: Size,
     pub(crate) dtype: DType,
     pub(crate) device: Device,
     pub(crate) readable: bool,
-    pub(crate) buffer: Option<wgpu::Buffer>,
+    // pub(crate) buffer: Option<wgpu::Buffer>,
 }
 
 impl Tensor for RSTensor {
@@ -85,8 +136,95 @@ impl Tensor for RSTensor {
             _ => None,
         }
     }
+
+    fn read_array(&self) -> Result<Vec<f32>, &'static str> {
+        if self.readable {
+            if let TensorBuffer::CPU(buffer) = &self.buffer {
+                return Ok(buffer.clone());
+            }
+        }
+        Err("Tensor is not readable")
+    }
+
+    fn read_float32(&self) -> Result<Vec<f32>, &'static str> {
+        if self.readable {
+            if let TensorBuffer::CPU(buffer) = &self.buffer {
+                return Ok(buffer.clone());
+            }
+        }
+        Err("Tensor is not readable")
+    }
 }
 
+impl From<Vec<f32>> for RSTensor {
+    fn from(data: Vec<f32>) -> Self {
+        let len = data.len();
+        RSTensor {
+            shape: Size::new(vec![len]),
+            dtype: DType::Float32,
+            device: Device::CPU,
+            readable: true,
+            buffer: TensorBuffer::CPU(data),
+        }
+    }
+}
+
+impl From<Vec<Vec<f32>>> for RSTensor {
+    fn from(data: Vec<Vec<f32>>) -> Self {
+        let shape = vec![data.len(), data[0].len()];
+        let flattened: Vec<f32> = data.into_iter().flatten().collect();
+        RSTensor {
+            shape: Size::new(shape),
+            dtype: DType::Float32,
+            device: Device::CPU,
+            readable: true,
+            buffer: TensorBuffer::CPU(flattened),
+        }
+    }
+}
+
+impl From<Vec<Vec<Vec<f32>>>> for RSTensor {
+    fn from(data: Vec<Vec<Vec<f32>>>) -> Self {
+        let shape = vec![data.len(), data[0].len(), data[0][0].len()];
+        let flattened: Vec<f32> = data.into_iter().flatten().flatten().collect();
+        RSTensor {
+            shape: Size::new(shape),
+            dtype: DType::Float32,
+            device: Device::CPU,
+            readable: true,
+            buffer: TensorBuffer::CPU(flattened),
+        }
+    }
+}
+
+impl fmt::Display for RSTensor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fn format_nested(data: &[f32], shape: &[usize], depth: usize) -> String {
+            if shape.is_empty() {
+                return format!("{}", data[0]);
+            }
+            let mut result = String::new();
+            let dim = shape[0];
+            let sub_size: usize = shape[1..].iter().product();
+            result.push('[');
+            for i in 0..dim {
+                if i > 0 {
+                    result.push_str(",");
+                }
+                if depth > 0 {
+                    result.push_str(&"".repeat(depth));
+                }
+                let start = i * sub_size;
+                let end = start + sub_size;
+                result.push_str(&format_nested(&data[start..end], &shape[1..], depth + 1));
+            }
+            result.push(']');
+            result
+        }
+
+        write!(f, "{}", format_nested(&self.buffer.into_array(), &self.shape.data, 0))
+    }
+}
 pub trait Tensors {
     fn init(&mut self, device: Option<Device>) -> Result<(), &'static str>;
     fn reset(&mut self);
@@ -96,10 +234,27 @@ pub trait Tensors {
     fn empty(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor;
     fn ones(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor;
     fn rand(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor;
-    fn tensor(&self, data: Vec<f32>, shape: Shape, options: Option<TensorOptions>) -> RSTensor;
+    fn randn(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor;
+    fn zeros(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor;
+    fn tensor<T: Into<RSTensor>>(&self, array: T, shape: Option<Shape>, options: Option<TensorOptions>) -> RSTensor;
+
     fn clone(&self, tensor: &RSTensor) -> RSTensor;
-    fn matmul(&self, a: &RSTensor, b: &RSTensor) -> RSTensor;
+    fn clone_tensor(&self, tensor: &RSTensor) -> RSTensor;
+    fn copy(&self, src: &RSTensor, dst: &mut RSTensor) -> Result<(), &'static str>;
+
+    fn sigmoid(&self, tensor: &RSTensor) -> RSTensor;
+    fn item(&self, tensor: &RSTensor) -> f32;
+    fn gt(&self, tensor: &RSTensor, value: f32) -> RSTensor;
+    fn transpose(&self, tensor: &RSTensor) -> RSTensor;
+    fn mul(&self, a: &RSTensor, b: &RSTensor) -> RSTensor;
+    fn mul_scalar(&self, a: &RSTensor, b: f32) -> RSTensor;
+    fn mean(&self, tensor: &RSTensor) -> RSTensor;
+    fn pow(&self, tensor: &RSTensor, exponent: f32) -> RSTensor;
+    fn sub(&self, a: &RSTensor, b: &RSTensor) -> RSTensor;
+    fn relu(&self, tensor: &RSTensor) -> RSTensor;
+    fn matmul(&self, tensor_a: &RSTensor, tensor_b: &RSTensor) -> RSTensor;
     fn maximum(&self, tensor: &RSTensor, value: f32) -> RSTensor;
+    fn max(&self, tensor: &RSTensor) -> RSTensor;
 }
 
 pub enum RSTensors {
@@ -111,11 +266,7 @@ impl RSTensors {
     pub fn new(device: Device) -> Self {
         match device {
             Device::CPU => RSTensors::CPU(CPUTensors),
-            Device::GPU => {
-                let runtime = tokio::runtime::Runtime::new().unwrap();
-                let wgpu_tensors = runtime.block_on(async { WGPUTensors::new().await });
-                RSTensors::GPU(Arc::new(wgpu_tensors))
-            }
+            Device::GPU => RSTensors::GPU(WGPUTensors::create()),
         }
     }
 }
@@ -156,6 +307,13 @@ impl Tensors for RSTensors {
         }
     }
 
+    fn zeros(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor {
+        match self {
+            RSTensors::CPU(cpu) => cpu.zeros(shape, options),
+            RSTensors::GPU(gpu) => gpu.zeros(shape, options),
+        }
+    }
+
     fn ones(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor {
         match self {
             RSTensors::CPU(cpu) => cpu.ones(shape, options),
@@ -170,7 +328,7 @@ impl Tensors for RSTensors {
         }
     }
 
-    fn tensor(&self, data: Vec<f32>, shape: Shape, options: Option<TensorOptions>) -> RSTensor {
+    fn tensor<T: Into<RSTensor>>(&self, data: T, shape: Option<Shape>, options: Option<TensorOptions>) -> RSTensor {
         match self {
             RSTensors::CPU(cpu) => cpu.tensor(data, shape, options),
             RSTensors::GPU(gpu) => gpu.tensor(data, shape, options),
@@ -180,8 +338,12 @@ impl Tensors for RSTensors {
     fn clone(&self, tensor: &RSTensor) -> RSTensor {
         match self {
             RSTensors::CPU(cpu) => cpu.clone(tensor),
-            RSTensors::GPU(gpu) => gpu.clone(tensor),
+            RSTensors::GPU(gpu) => gpu.clone_tensor(tensor),
         }
+    }
+
+    fn clone_tensor(&self, tensor: &RSTensor) -> RSTensor {
+        self.clone(tensor)
     }
 
     fn matmul(&self, a: &RSTensor, b: &RSTensor) -> RSTensor {
@@ -196,6 +358,64 @@ impl Tensors for RSTensors {
             RSTensors::CPU(cpu) => cpu.maximum(tensor, value),
             RSTensors::GPU(gpu) => gpu.maximum(tensor, value),
         }
+    }
+
+    fn randn(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor {
+        match self {
+            RSTensors::CPU(cpu) => cpu.randn(shape, options),
+            RSTensors::GPU(gpu) => gpu.randn(shape, options),
+        }
+    }
+
+    fn copy(&self, src: &RSTensor, dst: &mut RSTensor) -> Result<(), &'static str> {
+        match self {
+            RSTensors::CPU(cpu) => cpu.copy(src, dst),
+            RSTensors::GPU(gpu) => gpu.copy(src, dst),
+        }
+    }
+
+    fn sigmoid(&self, tensor: &RSTensor) -> RSTensor {
+        todo!()
+    }
+
+    fn item(&self, tensor: &RSTensor) -> f32 {
+        todo!()
+    }
+
+    fn gt(&self, tensor: &RSTensor, value: f32) -> RSTensor {
+        todo!()
+    }
+
+    fn transpose(&self, tensor: &RSTensor) -> RSTensor {
+        todo!()
+    }
+
+    fn mul(&self, a: &RSTensor, b: &RSTensor) -> RSTensor {
+        todo!()
+    }
+
+    fn mul_scalar(&self, a: &RSTensor, b: f32) -> RSTensor {
+        todo!()
+    }
+
+    fn mean(&self, tensor: &RSTensor) -> RSTensor {
+        todo!()
+    }
+
+    fn pow(&self, tensor: &RSTensor, exponent: f32) -> RSTensor {
+        todo!()
+    }
+
+    fn sub(&self, a: &RSTensor, b: &RSTensor) -> RSTensor {
+        todo!()
+    }
+
+    fn relu(&self, tensor: &RSTensor) -> RSTensor {
+        todo!()
+    }
+
+    fn max(&self, tensor: &RSTensor) -> RSTensor {
+        todo!()
     }
 }
 
