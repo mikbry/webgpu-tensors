@@ -99,9 +99,9 @@ impl WASMTensorsImpl {
     #[wasm_bindgen]
     pub fn tensor(&self, array: JsValue, options: JsValue) -> Result<JsValue, JsValue> {
         let tensor_options = self.parse_options(options);
-        let shape = tensor_options.shape.clone();
+        let shape = tensor_options.shape.clone().unwrap_or([].to_vec());
         let data: Vec<f32> = from_value(array).map_err(|e| e.to_string())?;
-        let tensor = self.instance.tensor(data, shape, Some(tensor_options.to_options()));
+        let tensor = self.instance.tensor((data, shape), Some(tensor_options.to_options()));
         to_value(&tensor).map_err(|e| e.into())
     }
 

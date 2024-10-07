@@ -105,12 +105,8 @@ impl Tensors for WGPUTensors {
         }
     }
 
-    fn tensor<T: Into<RSTensor>>(&self, array: T, shape: Option<Shape>, _options: Option<TensorOptions>) -> RSTensor {
-        let mut t: RSTensor = array.into();
-        match shape {
-            Some(shape) => t.shape.data = shape,
-            None => (),
-        }
+    fn tensor<T: Into<RSTensor>>(&self, n_array: T, _options: Option<TensorOptions>) -> RSTensor {
+        let mut t: RSTensor = n_array.into();
         let  data = t.buffer.into_array();
         // assert_eq!(data.len(), size.size(), "Data length must match the shape size");
         let buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {

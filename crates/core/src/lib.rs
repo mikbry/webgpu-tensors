@@ -47,57 +47,6 @@ impl fmt::Display for Size {
     }
 }
 
-#[macro_export]
-macro_rules! to_flat_vec_and_shape {
-    ($arr:expr) => {{
-        let mut shape = Vec::new();
-        let mut flat_vec = Vec::new();
-
-        // Helper function to process nested arrays
-        fn process_array(arr: &[impl AsRef<[f32]>], shape: &mut Vec<usize>, flat_vec: &mut Vec<f32>) {
-            if arr.is_empty() {
-                return;
-            }
-            shape.push(arr.len());
-            for item in arr {
-                let item_ref = item.as_ref();
-                if item_ref.is_empty() {
-                    continue;
-                }
-                if shape.len() == 1 {
-                    flat_vec.extend_from_slice(item_ref);
-                } else {
-                    process_array(item_ref, shape, flat_vec);
-                }
-            }
-        }
-
-        process_array(&[$arr], &mut shape, &mut flat_vec);
-
-        // Remove the outermost dimension if it's 1
-        if shape[0] == 1 {
-            shape.remove(0);
-        }
-
-        (shape, flat_vec)
-    }};
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_to_flat_vec_and_shape() {
-        let arr1 = [1.0, 2.0, 3.0, 4.0];
-        assert_eq!(to_flat_vec_and_shape!(arr1), (vec![4], vec![1.0, 2.0, 3.0, 4.0]));
-
-        let arr2 = [[1.0, 2.0], [3.0, 4.0]];
-        assert_eq!(to_flat_vec_and_shape!(arr2), (vec![2, 2], vec![1.0, 2.0, 3.0, 4.0]));
-
-        let arr3 = [[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]]];
-        assert_eq!(to_flat_vec_and_shape!(arr3), (vec![2, 2, 2], vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]));
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TensorOptions {
     pub usage: usize,
@@ -120,7 +69,6 @@ impl TensorOptions {
         }
     }
 }
-
 
 pub trait Tensor {
     fn shape(&self) -> &Size;
@@ -207,15 +155,68 @@ impl Tensor for RSTensor {
     }
 }
 
+impl From<(Vec<f32>, Vec<usize>)> for RSTensor {
+    fn from(data: (Vec<f32>, Vec<usize>)) -> Self {
+        let len = data.0.len();
+        let shape;
+        if data.1.len() > 0 {
+            shape = data.1;
+        } else {
+            shape = vec![len];
+        }
+        RSTensor {
+            shape: Size::new(shape),
+            dtype: DType::Float32,
+            device: Device::CPU,
+            readable: true,
+            buffer: TensorBuffer::CPU(data.0),
+        }
+    }
+}
+
+impl From<(Vec<i32>, Vec<usize>)> for RSTensor {
+    fn from(data: (Vec<i32>, Vec<usize>)) -> Self {
+        let len = data.0.len();
+        let shape;
+        if data.1.len() > 0 {
+            shape = data.1;
+        } else {
+            shape = vec![len];
+        }
+        RSTensor {
+            shape: Size::new(shape),
+            dtype: DType::Float32,
+            device: Device::CPU,
+            readable: true,
+            buffer: TensorBuffer::CPU(data.0.iter().map(|x| *x as f32).collect()),
+        }
+    }
+}
+
 impl From<Vec<f32>> for RSTensor {
     fn from(data: Vec<f32>) -> Self {
         let len = data.len();
+        let shape = vec![len];
         RSTensor {
-            shape: Size::new(vec![len]),
+            shape: Size::new(shape),
             dtype: DType::Float32,
             device: Device::CPU,
             readable: true,
             buffer: TensorBuffer::CPU(data),
+        }
+    }
+}
+
+impl From<Vec<i32>> for RSTensor {
+    fn from(data: Vec<i32>) -> Self {
+        let len = data.len();
+        let shape = vec![len];
+        RSTensor {
+            shape: Size::new(shape),
+            dtype: DType::Float32,
+            device: Device::CPU,
+            readable: true,
+            buffer: TensorBuffer::CPU(data.iter().map(|x| *x as f32).collect()),
         }
     }
 }
@@ -234,10 +235,43 @@ impl From<Vec<Vec<f32>>> for RSTensor {
     }
 }
 
+impl From<Vec<Vec<i32>>> for RSTensor {
+    fn from(data: Vec<Vec<i32>>) -> Self {
+        let shape = vec![data.len(), data[0].len()];
+        let flattened: Vec<f32> = data.into_iter().flatten().map(|x| x as f32).collect();
+        RSTensor {
+            shape: Size::new(shape),
+            dtype: DType::Float32,
+            device: Device::CPU,
+            readable: true,
+            buffer: TensorBuffer::CPU(flattened),
+        }
+    }
+}
+
 impl From<Vec<Vec<Vec<f32>>>> for RSTensor {
     fn from(data: Vec<Vec<Vec<f32>>>) -> Self {
         let shape = vec![data.len(), data[0].len(), data[0][0].len()];
         let flattened: Vec<f32> = data.into_iter().flatten().flatten().collect();
+        RSTensor {
+            shape: Size::new(shape),
+            dtype: DType::Float32,
+            device: Device::CPU,
+            readable: true,
+            buffer: TensorBuffer::CPU(flattened),
+        }
+    }
+}
+
+impl From<Vec<Vec<Vec<i32>>>> for RSTensor {
+    fn from(data: Vec<Vec<Vec<i32>>>) -> Self {
+        let shape = vec![data.len(), data[0].len(), data[0][0].len()];
+        let flattened: Vec<f32> = data
+            .into_iter()
+            .flatten()
+            .flatten()
+            .map(|x| x as f32)
+            .collect();
         RSTensor {
             shape: Size::new(shape),
             dtype: DType::Float32,
@@ -263,7 +297,7 @@ impl fmt::Display for RSTensor {
                     result.push_str(",");
                 }
                 if depth > 0 {
-                    result.push_str(&"".repeat(depth));
+                    result.push_str(&" ".repeat(depth));
                 }
                 let start = i * sub_size;
                 let end = start + sub_size;
@@ -279,8 +313,8 @@ impl fmt::Display for RSTensor {
         }
 
         match &self.buffer {
-            TensorBuffer::CPU(data) => write!(f, "{}", format_nested(data, &self.shape.data, 0)),
-            TensorBuffer::GPU(_) => write!(f, "GPU Tensor: {:?}", self.shape),
+            TensorBuffer::CPU(data) => write!(f, "tensor({})", format_nested(data, &self.shape.data, 0)),
+            TensorBuffer::GPU(_) => write!(f, "tensor({:?})", self.shape),
         }
     }
 }
@@ -295,7 +329,7 @@ pub trait Tensors {
     fn rand(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor;
     fn randn(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor;
     fn zeros(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor;
-    fn tensor<T: Into<RSTensor>>(&self, n_array: (T, Shape), options: Option<TensorOptions>) -> RSTensor;
+    fn tensor<T: Into<RSTensor>>(&self, n_array: T, options: Option<TensorOptions>) -> RSTensor;
 
     fn clone(&self, tensor: &RSTensor) -> RSTensor;
     fn clone_tensor(&self, tensor: &RSTensor) -> RSTensor;
@@ -387,7 +421,7 @@ impl Tensors for RSTensors {
         }
     }
 
-    fn tensor<T: Into<RSTensor>>(&self, n_array: (T, Shape), options: Option<TensorOptions>) -> RSTensor {
+    fn tensor<T: Into<RSTensor>>(&self, n_array: T, options: Option<TensorOptions>) -> RSTensor {
         match self {
             RSTensors::CPU(cpu) => cpu.tensor(n_array, options),
             RSTensors::GPU(gpu) => gpu.tensor(n_array, options),

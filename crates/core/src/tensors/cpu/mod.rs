@@ -53,12 +53,8 @@ impl Tensors for CPUTensors {
         }
     }
 
-    fn tensor<T: Into<RSTensor>>(&self, array: T, shape: Option<Shape>,  _options: Option<TensorOptions>) -> RSTensor {
-        let mut t = array.into();
-        match shape {
-            Some(shape) => t.shape.data = shape,
-            None => (),
-        }
+    fn tensor<T: Into<RSTensor>>(&self, n_array: T,  _options: Option<TensorOptions>) -> RSTensor {
+        let t = n_array.into();
         t
     }
 
