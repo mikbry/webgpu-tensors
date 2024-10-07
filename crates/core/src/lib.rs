@@ -244,7 +244,7 @@ pub trait Tensors {
     fn rand(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor;
     fn randn(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor;
     fn zeros(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor;
-    fn tensor<T: Into<RSTensor>>(&self, array: T, shape: Option<Shape>, options: Option<TensorOptions>) -> RSTensor;
+    fn tensor<T: Into<RSTensor>>(&self, n_array: (T, Shape), options: Option<TensorOptions>) -> RSTensor;
 
     fn clone(&self, tensor: &RSTensor) -> RSTensor;
     fn clone_tensor(&self, tensor: &RSTensor) -> RSTensor;
@@ -336,10 +336,10 @@ impl Tensors for RSTensors {
         }
     }
 
-    fn tensor<T: Into<RSTensor>>(&self, data: T, shape: Option<Shape>, options: Option<TensorOptions>) -> RSTensor {
+    fn tensor<T: Into<RSTensor>>(&self, n_array: (T, Shape), options: Option<TensorOptions>) -> RSTensor {
         match self {
-            RSTensors::CPU(cpu) => cpu.tensor(data, shape, options),
-            RSTensors::GPU(gpu) => gpu.tensor(data, shape, options),
+            RSTensors::CPU(cpu) => cpu.tensor(n_array, options),
+            RSTensors::GPU(gpu) => gpu.tensor(n_array, options),
         }
     }
 
