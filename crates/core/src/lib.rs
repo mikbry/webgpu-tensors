@@ -93,7 +93,7 @@ impl TensorBuffer {
     fn into_array(&self) -> Vec<f32> {
         match self {
             TensorBuffer::CPU(vec) => vec.to_vec(),
-            TensorBuffer::GPU(_buffer) => [].to_vec(),
+            TensorBuffer::GPU(_buffer) => Vec::new(),
         }
     }
 }
@@ -216,13 +216,21 @@ impl fmt::Display for RSTensor {
                 }
                 let start = i * sub_size;
                 let end = start + sub_size;
-                result.push_str(&format_nested(&data[start..end], &shape[1..], depth + 1));
+                if start < data.len() {
+                    let end = std::cmp::min(end, data.len());
+                    result.push_str(&format_nested(&data[start..end], &shape[1..], depth + 1));
+                } else {
+                    result.push_str("[...]");
+                }
             }
             result.push(']');
             result
         }
 
-        write!(f, "{}", format_nested(&self.buffer.into_array(), &self.shape.data, 0))
+        match &self.buffer {
+            TensorBuffer::CPU(data) => write!(f, "{}", format_nested(data, &self.shape.data, 0)),
+            TensorBuffer::GPU(_) => write!(f, "GPU Tensor: {:?}", self.shape),
+        }
     }
 }
 pub trait Tensors {
