@@ -6,20 +6,21 @@ macro_rules! to_flat_vec_and_shape {
         let mut flat_vec = Vec::new();
 
         // Helper function to process nested arrays
-        fn process_array(arr: &[impl AsRef<[f32]>], shape: &mut Vec<usize>, flat_vec: &mut Vec<f32>) {
+        fn process_array<T: Copy + Into<f32>>(arr: &[T], shape: &mut Vec<usize>, flat_vec: &mut Vec<f32>) {
             if arr.is_empty() {
                 return;
             }
             shape.push(arr.len());
-            for item in arr {
-                let item_ref = item.as_ref();
-                if item_ref.is_empty() {
-                    continue;
-                }
-                if shape.len() == 1 {
-                    flat_vec.extend_from_slice(item_ref);
+            if let Some(first) = arr.first() {
+                if let Some(nested) = std::any::Any::downcast_ref::<[T]>(first) {
+                    process_array(nested, shape, flat_vec);
+                    for item in arr.iter().skip(1) {
+                        if let Some(nested) = std::any::Any::downcast_ref::<[T]>(item) {
+                            process_array(nested, shape, flat_vec);
+                        }
+                    }
                 } else {
-                    process_array(item_ref, shape, flat_vec);
+                    flat_vec.extend(arr.iter().map(|&x| x.into()));
                 }
             }
         }
