@@ -1,5 +1,4 @@
 use crate::{Device, DType, RSTensor, Shape, Size, Tensor, TensorOptions, Tensors};
-use rand::distributions::{Distribution, Standard};
 use rand::Rng;
 
 pub struct CPUTensors;
