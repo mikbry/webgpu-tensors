@@ -115,7 +115,10 @@ export class WASMTensors implements Tensors {
     const shape = ShapeSize.createFromNestedArray(array);
     const oned = shape.length === 1;
     const stridedArray = (oned ? array : array.flat(shape.length as 10)) as number[];
-    const wasmTensor = WASMTensors._instance.tensor(stridedArray, { ...options, shape: oned ? undefined : shape.data });
+    const wasmTensor = WASMTensors._instance.tensor(stridedArray, {
+      ...options,
+      shape: oned ? undefined : shape.data,
+    });
     if (!oned) {
       wasmTensor.shape = shape;
     }
