@@ -375,47 +375,80 @@ impl Tensors for RSTensors {
     }
 
     fn sigmoid(&self, tensor: &RSTensor) -> RSTensor {
-        todo!()
+        match self {
+            RSTensors::CPU(cpu) => cpu.sigmoid(tensor),
+            RSTensors::GPU(gpu) => gpu.sigmoid(tensor),
+        }
     }
 
     fn item(&self, tensor: &RSTensor) -> f32 {
-        todo!()
+        match self {
+            RSTensors::CPU(cpu) => cpu.item(tensor),
+            RSTensors::GPU(gpu) => gpu.item(tensor),
+        }
     }
 
     fn gt(&self, tensor: &RSTensor, value: f32) -> RSTensor {
-        todo!()
+        match self {
+            RSTensors::CPU(cpu) => cpu.gt(tensor, value),
+            RSTensors::GPU(gpu) => gpu.gt(tensor, value),
+        }
     }
 
     fn transpose(&self, tensor: &RSTensor) -> RSTensor {
-        todo!()
+        match self {
+            RSTensors::CPU(cpu) => cpu.transpose(tensor),
+            RSTensors::GPU(gpu) => gpu.transpose(tensor),
+        }
     }
 
     fn mul(&self, a: &RSTensor, b: &RSTensor) -> RSTensor {
-        todo!()
+        match self {
+            RSTensors::CPU(cpu) => cpu.mul(a, b),
+            RSTensors::GPU(gpu) => gpu.mul(a, b),
+        }
     }
 
     fn mul_scalar(&self, a: &RSTensor, b: f32) -> RSTensor {
-        todo!()
+        match self {
+            RSTensors::CPU(cpu) => cpu.mul_scalar(a, b),
+            RSTensors::GPU(gpu) => gpu.mul_scalar(a, b),
+        }
     }
 
     fn mean(&self, tensor: &RSTensor) -> RSTensor {
-        todo!()
+        match self {
+            RSTensors::CPU(cpu) => cpu.mean(tensor),
+            RSTensors::GPU(gpu) => gpu.mean(tensor),
+        }
     }
 
     fn pow(&self, tensor: &RSTensor, exponent: f32) -> RSTensor {
-        todo!()
+        match self {
+            RSTensors::CPU(cpu) => cpu.pow(tensor, exponent),
+            RSTensors::GPU(gpu) => gpu.pow(tensor, exponent),
+        }
     }
 
     fn sub(&self, a: &RSTensor, b: &RSTensor) -> RSTensor {
-        todo!()
+        match self {
+            RSTensors::CPU(cpu) => cpu.sub(a, b),
+            RSTensors::GPU(gpu) => gpu.sub(a, b),
+        }
     }
 
     fn relu(&self, tensor: &RSTensor) -> RSTensor {
-        todo!()
+        match self {
+            RSTensors::CPU(cpu) => cpu.relu(tensor),
+            RSTensors::GPU(gpu) => gpu.relu(tensor),
+        }
     }
 
     fn max(&self, tensor: &RSTensor) -> RSTensor {
-        todo!()
+        match self {
+            RSTensors::CPU(cpu) => cpu.max(tensor),
+            RSTensors::GPU(gpu) => gpu.max(tensor),
+        }
     }
 }
 
