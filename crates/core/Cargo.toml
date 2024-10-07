@@ -6,3 +6,5 @@ edition = "2021"
 [dependencies]
 rand = { version = "0.8.5", features = ["std_rng"] }
 serde = { version = "1.0.210", features = ["derive"] }
+wgpu = "0.17"
+bytemuck = "1.13"
