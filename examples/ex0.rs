@@ -1,7 +1,7 @@
-use webgpu_tensors::{tensors_println, Device, RSTensors, Tensors};
+use webgpu_tensors::{tensors_println, Tensors, TensorsOperations};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut t = RSTensors::new(Device::CPU);
+    let mut t = Tensors::default();
     t.init(None)?;
 
     let write_tensor = t.tensor(vec![0.0, 1.0, 2.0, 3.0], None);

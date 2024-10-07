@@ -1,7 +1,7 @@
 import { Device, DType, NestedArray, Shape, Tensor, TensorOptions, Tensors } from './types';
 import { JSTensors } from './tensors/js';
 import WebGPUTensors from './tensors/webgpu';
-import { WASMTensors } from './tensors/wasm';
+// import { WASMTensors } from './tensors/wasm';
 
 class Framework implements Tensors {
   device: Device;
@@ -108,9 +108,9 @@ export function device(
     implementation = WebGPUTensors.create();
   } else if (device === Device.CPU) {
     implementation = JSTensors.create();
-  } else if (device === Device.WASM) {
+  } /* else if (device === Device.WASM) {
     implementation = WASMTensors.create();
-  } else {
+  } */ else {
     throw new Error('Unknown device ' + device);
   }
   const framework = new Framework(device, implementation);

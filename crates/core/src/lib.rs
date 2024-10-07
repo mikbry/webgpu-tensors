@@ -3,7 +3,9 @@ mod tensors;
 use std::{fmt, sync::Arc};
 
 use serde::{Deserialize, Serialize};
-use tensors::{cpu::CPUTensors, webgpu::WGPUTensors};
+pub use tensors::{cpu::CPUTensors, webgpu::WGPUTensors};
+
+pub use tensors::tensor::Tensor;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum Device {
@@ -70,477 +72,233 @@ impl TensorOptions {
     }
 }
 
-pub trait Tensor {
-    fn shape(&self) -> &Size;
-    fn dtype(&self) -> DType;
-    fn device(&self) -> Device;
-    fn readable(&self) -> bool;
-    fn numel(&self) -> usize;
-    fn size(&self, dim: Option<usize>) -> Option<usize>;
-    fn read_array(&self) -> Result<Vec<f32>, &'static str>;
-    fn read_float32(&self) -> Result<Vec<f32>, &'static str>;
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub enum TensorBuffer {
-    CPU(Vec<f32>),
-    #[serde(skip)]
-    GPU(wgpu::Buffer),
-}
-
-impl TensorBuffer {
-    fn into_array(&self) -> Vec<f32> {
-        match self {
-            TensorBuffer::CPU(vec) => vec.to_vec(),
-            TensorBuffer::GPU(_buffer) => Vec::new(),
-        }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct RSTensor {
-    pub(crate) buffer: TensorBuffer,
-    pub(crate) shape: Size,
-    pub(crate) dtype: DType,
-    pub(crate) device: Device,
-    pub(crate) readable: bool,
-    // pub(crate) buffer: Option<wgpu::Buffer>,
-}
-
-impl Tensor for RSTensor {
-    fn shape(&self) -> &Size {
-        &self.shape
-    }
-
-    fn dtype(&self) -> DType {
-        self.dtype
-    }
-
-    fn device(&self) -> Device {
-        self.device
-    }
-
-    fn readable(&self) -> bool {
-        self.readable
-    }
-
-    fn numel(&self) -> usize {
-        self.shape.size()
-    }
-
-    fn size(&self, dim: Option<usize>) -> Option<usize> {
-        match dim {
-            Some(d) if d < self.shape.data.len() => Some(self.shape.data[d]),
-            None => Some(self.shape.size()),
-            _ => None,
-        }
-    }
-
-    fn read_array(&self) -> Result<Vec<f32>, &'static str> {
-        if self.readable {
-            if let TensorBuffer::CPU(buffer) = &self.buffer {
-                return Ok(buffer.clone());
-            }
-        }
-        Err("Tensor is not readable")
-    }
-
-    fn read_float32(&self) -> Result<Vec<f32>, &'static str> {
-        if self.readable {
-            if let TensorBuffer::CPU(buffer) = &self.buffer {
-                return Ok(buffer.clone());
-            }
-        }
-        Err("Tensor is not readable")
-    }
-}
-
-impl From<(Vec<f32>, Vec<usize>)> for RSTensor {
-    fn from(data: (Vec<f32>, Vec<usize>)) -> Self {
-        let len = data.0.len();
-        let shape;
-        if data.1.len() > 0 {
-            shape = data.1;
-        } else {
-            shape = vec![len];
-        }
-        RSTensor {
-            shape: Size::new(shape),
-            dtype: DType::Float32,
-            device: Device::CPU,
-            readable: true,
-            buffer: TensorBuffer::CPU(data.0),
-        }
-    }
-}
-
-impl From<(Vec<i32>, Vec<usize>)> for RSTensor {
-    fn from(data: (Vec<i32>, Vec<usize>)) -> Self {
-        let len = data.0.len();
-        let shape;
-        if data.1.len() > 0 {
-            shape = data.1;
-        } else {
-            shape = vec![len];
-        }
-        RSTensor {
-            shape: Size::new(shape),
-            dtype: DType::Float32,
-            device: Device::CPU,
-            readable: true,
-            buffer: TensorBuffer::CPU(data.0.iter().map(|x| *x as f32).collect()),
-        }
-    }
-}
-
-impl From<Vec<f32>> for RSTensor {
-    fn from(data: Vec<f32>) -> Self {
-        let len = data.len();
-        let shape = vec![len];
-        RSTensor {
-            shape: Size::new(shape),
-            dtype: DType::Float32,
-            device: Device::CPU,
-            readable: true,
-            buffer: TensorBuffer::CPU(data),
-        }
-    }
-}
-
-impl From<Vec<i32>> for RSTensor {
-    fn from(data: Vec<i32>) -> Self {
-        let len = data.len();
-        let shape = vec![len];
-        RSTensor {
-            shape: Size::new(shape),
-            dtype: DType::Float32,
-            device: Device::CPU,
-            readable: true,
-            buffer: TensorBuffer::CPU(data.iter().map(|x| *x as f32).collect()),
-        }
-    }
-}
-
-impl From<Vec<Vec<f32>>> for RSTensor {
-    fn from(data: Vec<Vec<f32>>) -> Self {
-        let shape = vec![data.len(), data[0].len()];
-        let flattened: Vec<f32> = data.into_iter().flatten().collect();
-        RSTensor {
-            shape: Size::new(shape),
-            dtype: DType::Float32,
-            device: Device::CPU,
-            readable: true,
-            buffer: TensorBuffer::CPU(flattened),
-        }
-    }
-}
-
-impl From<Vec<Vec<i32>>> for RSTensor {
-    fn from(data: Vec<Vec<i32>>) -> Self {
-        let shape = vec![data.len(), data[0].len()];
-        let flattened: Vec<f32> = data.into_iter().flatten().map(|x| x as f32).collect();
-        RSTensor {
-            shape: Size::new(shape),
-            dtype: DType::Float32,
-            device: Device::CPU,
-            readable: true,
-            buffer: TensorBuffer::CPU(flattened),
-        }
-    }
-}
-
-impl From<Vec<Vec<Vec<f32>>>> for RSTensor {
-    fn from(data: Vec<Vec<Vec<f32>>>) -> Self {
-        let shape = vec![data.len(), data[0].len(), data[0][0].len()];
-        let flattened: Vec<f32> = data.into_iter().flatten().flatten().collect();
-        RSTensor {
-            shape: Size::new(shape),
-            dtype: DType::Float32,
-            device: Device::CPU,
-            readable: true,
-            buffer: TensorBuffer::CPU(flattened),
-        }
-    }
-}
-
-impl From<Vec<Vec<Vec<i32>>>> for RSTensor {
-    fn from(data: Vec<Vec<Vec<i32>>>) -> Self {
-        let shape = vec![data.len(), data[0].len(), data[0][0].len()];
-        let flattened: Vec<f32> = data
-            .into_iter()
-            .flatten()
-            .flatten()
-            .map(|x| x as f32)
-            .collect();
-        RSTensor {
-            shape: Size::new(shape),
-            dtype: DType::Float32,
-            device: Device::CPU,
-            readable: true,
-            buffer: TensorBuffer::CPU(flattened),
-        }
-    }
-}
-
-impl fmt::Display for RSTensor {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fn format_nested(data: &[f32], shape: &[usize], depth: usize) -> String {
-            if shape.is_empty() {
-                return format!("{}", data[0]);
-            }
-            let mut result = String::new();
-            let dim = shape[0];
-            let sub_size: usize = shape[1..].iter().product();
-            result.push('[');
-            for i in 0..dim {
-                if i > 0 {
-                    result.push_str(",");
-                }
-                if depth > 0 {
-                    result.push_str(&" ".repeat(depth));
-                }
-                let start = i * sub_size;
-                let end = start + sub_size;
-                if start < data.len() {
-                    let end = std::cmp::min(end, data.len());
-                    result.push_str(&format_nested(&data[start..end], &shape[1..], depth + 1));
-                } else {
-                    result.push_str("[...]");
-                }
-            }
-            result.push(']');
-            result
-        }
-
-        match &self.buffer {
-            TensorBuffer::CPU(data) => write!(f, "tensor({})", format_nested(data, &self.shape.data, 0)),
-            TensorBuffer::GPU(_) => write!(f, "tensor({:?})", self.shape),
-        }
-    }
-}
-pub trait Tensors {
+pub trait TensorsOperations {
     fn init(&mut self, device: Option<Device>) -> Result<(), &'static str>;
     fn reset(&mut self);
     fn compute(&mut self);
     fn destroy(&mut self);
 
-    fn empty(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor;
-    fn ones(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor;
-    fn rand(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor;
-    fn randn(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor;
-    fn zeros(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor;
-    fn tensor<T: Into<RSTensor>>(&self, n_array: T, options: Option<TensorOptions>) -> RSTensor;
+    fn empty(&self, shape: Shape, options: Option<TensorOptions>) -> Tensor;
+    fn ones(&self, shape: Shape, options: Option<TensorOptions>) -> Tensor;
+    fn rand(&self, shape: Shape, options: Option<TensorOptions>) -> Tensor;
+    fn randn(&self, shape: Shape, options: Option<TensorOptions>) -> Tensor;
+    fn zeros(&self, shape: Shape, options: Option<TensorOptions>) -> Tensor;
+    fn tensor<T: Into<Tensor>>(&self, n_array: T, options: Option<TensorOptions>) -> Tensor;
 
-    fn clone(&self, tensor: &RSTensor) -> RSTensor;
-    fn clone_tensor(&self, tensor: &RSTensor) -> RSTensor;
-    fn copy(&self, src: &RSTensor, dst: &mut RSTensor) -> Result<(), &'static str>;
+    fn clone(&self, tensor: &Tensor) -> Tensor;
+    fn clone_tensor(&self, tensor: &Tensor) -> Tensor;
+    fn copy(&self, src: &Tensor, dst: &mut Tensor) -> Result<(), &'static str>;
 
-    fn sigmoid(&self, tensor: &RSTensor) -> RSTensor;
-    fn item(&self, tensor: &RSTensor) -> f32;
-    fn gt(&self, tensor: &RSTensor, value: f32) -> RSTensor;
-    fn transpose(&self, tensor: &RSTensor) -> RSTensor;
-    fn mul(&self, a: &RSTensor, b: &RSTensor) -> RSTensor;
-    fn mul_scalar(&self, a: &RSTensor, b: f32) -> RSTensor;
-    fn mean(&self, tensor: &RSTensor) -> RSTensor;
-    fn pow(&self, tensor: &RSTensor, exponent: f32) -> RSTensor;
-    fn sub(&self, a: &RSTensor, b: &RSTensor) -> RSTensor;
-    fn relu(&self, tensor: &RSTensor) -> RSTensor;
-    fn matmul(&self, tensor_a: &RSTensor, tensor_b: &RSTensor) -> RSTensor;
-    fn maximum(&self, tensor: &RSTensor, value: f32) -> RSTensor;
-    fn max(&self, tensor: &RSTensor) -> RSTensor;
+    fn sigmoid(&self, tensor: &Tensor) -> Tensor;
+    fn item(&self, tensor: &Tensor) -> f32;
+    fn gt(&self, tensor: &Tensor, value: f32) -> Tensor;
+    fn transpose(&self, tensor: &Tensor) -> Tensor;
+    fn mul(&self, a: &Tensor, b: &Tensor) -> Tensor;
+    fn mul_scalar(&self, a: &Tensor, b: f32) -> Tensor;
+    fn mean(&self, tensor: &Tensor) -> Tensor;
+    fn pow(&self, tensor: &Tensor, exponent: f32) -> Tensor;
+    fn sub(&self, a: &Tensor, b: &Tensor) -> Tensor;
+    fn relu(&self, tensor: &Tensor) -> Tensor;
+    fn matmul(&self, tensor_a: &Tensor, tensor_b: &Tensor) -> Tensor;
+    fn maximum(&self, tensor: &Tensor, value: f32) -> Tensor;
+    fn max(&self, tensor: &Tensor) -> Tensor;
 }
 
-pub enum RSTensors {
+pub enum Tensors {
     CPU(CPUTensors),
     GPU(Arc<WGPUTensors>),
 }
 
-impl RSTensors {
-    pub fn new(device: Device) -> Self {
-        match device {
-            Device::CPU => RSTensors::CPU(CPUTensors),
-            Device::GPU => RSTensors::GPU(WGPUTensors::create()),
+impl Tensors {
+    pub fn new(device: Device) -> Tensors {
+        if device == Device::CPU {
+            return Tensors::CPU(CPUTensors::create());
+
         }
+        return Tensors::GPU(WGPUTensors::create());
+    }
+    pub fn default() -> Tensors {
+        return Tensors::CPU(CPUTensors::create());
     }
 }
 
-impl Tensors for RSTensors {
+impl TensorsOperations for Tensors {
     fn init(&mut self, device: Option<Device>) -> Result<(), &'static str> {
         match self {
-            RSTensors::CPU(cpu) => cpu.init(device),
-            RSTensors::GPU(gpu) => Arc::get_mut(gpu).unwrap().init(device),
+            Tensors::CPU(cpu) => cpu.init(device),
+            Tensors::GPU(gpu) => Arc::get_mut(gpu).unwrap().init(device),
         }
     }
 
     fn reset(&mut self) {
         match self {
-            RSTensors::CPU(cpu) => cpu.reset(),
-            RSTensors::GPU(gpu) => Arc::get_mut(gpu).unwrap().reset(),
+            Tensors::CPU(cpu) => cpu.reset(),
+            Tensors::GPU(gpu) => Arc::get_mut(gpu).unwrap().reset(),
         }
     }
 
     fn compute(&mut self) {
         match self {
-            RSTensors::CPU(cpu) => cpu.compute(),
-            RSTensors::GPU(gpu) => Arc::get_mut(gpu).unwrap().compute(),
+            Tensors::CPU(cpu) => cpu.compute(),
+            Tensors::GPU(gpu) => Arc::get_mut(gpu).unwrap().compute(),
         }
     }
 
     fn destroy(&mut self) {
         match self {
-            RSTensors::CPU(cpu) => cpu.destroy(),
-            RSTensors::GPU(gpu) => Arc::get_mut(gpu).unwrap().destroy(),
+            Tensors::CPU(cpu) => cpu.destroy(),
+            Tensors::GPU(gpu) => Arc::get_mut(gpu).unwrap().destroy(),
         }
     }
 
-    fn empty(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor {
+    fn empty(&self, shape: Shape, options: Option<TensorOptions>) -> Tensor {
         match self {
-            RSTensors::CPU(cpu) => cpu.empty(shape, options),
-            RSTensors::GPU(gpu) => gpu.empty(shape, options),
+            Tensors::CPU(cpu) => cpu.empty(shape, options),
+            Tensors::GPU(gpu) => gpu.empty(shape, options),
         }
     }
 
-    fn zeros(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor {
+    fn zeros(&self, shape: Shape, options: Option<TensorOptions>) -> Tensor {
         match self {
-            RSTensors::CPU(cpu) => cpu.zeros(shape, options),
-            RSTensors::GPU(gpu) => gpu.zeros(shape, options),
+            Tensors::CPU(cpu) => cpu.zeros(shape, options),
+            Tensors::GPU(gpu) => gpu.zeros(shape, options),
         }
     }
 
-    fn ones(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor {
+    fn ones(&self, shape: Shape, options: Option<TensorOptions>) -> Tensor {
         match self {
-            RSTensors::CPU(cpu) => cpu.ones(shape, options),
-            RSTensors::GPU(gpu) => gpu.ones(shape, options),
+            Tensors::CPU(cpu) => cpu.ones(shape, options),
+            Tensors::GPU(gpu) => gpu.ones(shape, options),
         }
     }
 
-    fn rand(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor {
+    fn rand(&self, shape: Shape, options: Option<TensorOptions>) -> Tensor {
         match self {
-            RSTensors::CPU(cpu) => cpu.rand(shape, options),
-            RSTensors::GPU(gpu) => gpu.rand(shape, options),
+            Tensors::CPU(cpu) => cpu.rand(shape, options),
+            Tensors::GPU(gpu) => gpu.rand(shape, options),
         }
     }
 
-    fn tensor<T: Into<RSTensor>>(&self, n_array: T, options: Option<TensorOptions>) -> RSTensor {
+    fn tensor<T: Into<Tensor>>(&self, n_array: T, options: Option<TensorOptions>) -> Tensor {
         match self {
-            RSTensors::CPU(cpu) => cpu.tensor(n_array, options),
-            RSTensors::GPU(gpu) => gpu.tensor(n_array, options),
+            Tensors::CPU(cpu) => cpu.tensor(n_array, options),
+            Tensors::GPU(gpu) => gpu.tensor(n_array, options),
         }
     }
 
-    fn clone(&self, tensor: &RSTensor) -> RSTensor {
+    fn clone_tensor(&self, tensor: &Tensor) -> Tensor {
         match self {
-            RSTensors::CPU(cpu) => cpu.clone(tensor),
-            RSTensors::GPU(gpu) => gpu.clone_tensor(tensor),
+            Tensors::CPU(cpu) => cpu.clone_tensor(tensor),
+            Tensors::GPU(gpu) => gpu.clone_tensor(tensor),
         }
     }
 
-    fn clone_tensor(&self, tensor: &RSTensor) -> RSTensor {
-        self.clone(tensor)
+    fn clone(&self, tensor: &Tensor) -> Tensor {
+        self.clone_tensor(tensor)
     }
 
-    fn matmul(&self, a: &RSTensor, b: &RSTensor) -> RSTensor {
+    fn matmul(&self, a: &Tensor, b: &Tensor) -> Tensor {
         match self {
-            RSTensors::CPU(cpu) => cpu.matmul(a, b),
-            RSTensors::GPU(gpu) => gpu.matmul(a, b),
+            Tensors::CPU(cpu) => cpu.matmul(a, b),
+            Tensors::GPU(gpu) => gpu.matmul(a, b),
         }
     }
 
-    fn maximum(&self, tensor: &RSTensor, value: f32) -> RSTensor {
+    fn maximum(&self, tensor: &Tensor, value: f32) -> Tensor {
         match self {
-            RSTensors::CPU(cpu) => cpu.maximum(tensor, value),
-            RSTensors::GPU(gpu) => gpu.maximum(tensor, value),
+            Tensors::CPU(cpu) => cpu.maximum(tensor, value),
+            Tensors::GPU(gpu) => gpu.maximum(tensor, value),
         }
     }
 
-    fn randn(&self, shape: Shape, options: Option<TensorOptions>) -> RSTensor {
+    fn randn(&self, shape: Shape, options: Option<TensorOptions>) -> Tensor {
         match self {
-            RSTensors::CPU(cpu) => cpu.randn(shape, options),
-            RSTensors::GPU(gpu) => gpu.randn(shape, options),
+            Tensors::CPU(cpu) => cpu.randn(shape, options),
+            Tensors::GPU(gpu) => gpu.randn(shape, options),
         }
     }
 
-    fn copy(&self, src: &RSTensor, dst: &mut RSTensor) -> Result<(), &'static str> {
+    fn copy(&self, src: &Tensor, dst: &mut Tensor) -> Result<(), &'static str> {
         match self {
-            RSTensors::CPU(cpu) => cpu.copy(src, dst),
-            RSTensors::GPU(gpu) => gpu.copy(src, dst),
+            Tensors::CPU(cpu) => cpu.copy(src, dst),
+            Tensors::GPU(gpu) => gpu.copy(src, dst),
         }
     }
 
-    fn sigmoid(&self, tensor: &RSTensor) -> RSTensor {
+    fn sigmoid(&self, tensor: &Tensor) -> Tensor {
         match self {
-            RSTensors::CPU(cpu) => cpu.sigmoid(tensor),
-            RSTensors::GPU(gpu) => gpu.sigmoid(tensor),
+            Tensors::CPU(cpu) => cpu.sigmoid(tensor),
+            Tensors::GPU(gpu) => gpu.sigmoid(tensor),
         }
     }
 
-    fn item(&self, tensor: &RSTensor) -> f32 {
+    fn item(&self, tensor: &Tensor) -> f32 {
         match self {
-            RSTensors::CPU(cpu) => cpu.item(tensor),
-            RSTensors::GPU(gpu) => gpu.item(tensor),
+            Tensors::CPU(cpu) => cpu.item(tensor),
+            Tensors::GPU(gpu) => gpu.item(tensor),
         }
     }
 
-    fn gt(&self, tensor: &RSTensor, value: f32) -> RSTensor {
+    fn gt(&self, tensor: &Tensor, value: f32) -> Tensor {
         match self {
-            RSTensors::CPU(cpu) => cpu.gt(tensor, value),
-            RSTensors::GPU(gpu) => gpu.gt(tensor, value),
+            Tensors::CPU(cpu) => cpu.gt(tensor, value),
+            Tensors::GPU(gpu) => gpu.gt(tensor, value),
         }
     }
 
-    fn transpose(&self, tensor: &RSTensor) -> RSTensor {
+    fn transpose(&self, tensor: &Tensor) -> Tensor {
         match self {
-            RSTensors::CPU(cpu) => cpu.transpose(tensor),
-            RSTensors::GPU(gpu) => gpu.transpose(tensor),
+            Tensors::CPU(cpu) => cpu.transpose(tensor),
+            Tensors::GPU(gpu) => gpu.transpose(tensor),
         }
     }
 
-    fn mul(&self, a: &RSTensor, b: &RSTensor) -> RSTensor {
+    fn mul(&self, a: &Tensor, b: &Tensor) -> Tensor {
         match self {
-            RSTensors::CPU(cpu) => cpu.mul(a, b),
-            RSTensors::GPU(gpu) => gpu.mul(a, b),
+            Tensors::CPU(cpu) => cpu.mul(a, b),
+            Tensors::GPU(gpu) => gpu.mul(a, b),
         }
     }
 
-    fn mul_scalar(&self, a: &RSTensor, b: f32) -> RSTensor {
+    fn mul_scalar(&self, a: &Tensor, b: f32) -> Tensor {
         match self {
-            RSTensors::CPU(cpu) => cpu.mul_scalar(a, b),
-            RSTensors::GPU(gpu) => gpu.mul_scalar(a, b),
+            Tensors::CPU(cpu) => cpu.mul_scalar(a, b),
+            Tensors::GPU(gpu) => gpu.mul_scalar(a, b),
         }
     }
 
-    fn mean(&self, tensor: &RSTensor) -> RSTensor {
+    fn mean(&self, tensor: &Tensor) -> Tensor {
         match self {
-            RSTensors::CPU(cpu) => cpu.mean(tensor),
-            RSTensors::GPU(gpu) => gpu.mean(tensor),
+            Tensors::CPU(cpu) => cpu.mean(tensor),
+            Tensors::GPU(gpu) => gpu.mean(tensor),
         }
     }
 
-    fn pow(&self, tensor: &RSTensor, exponent: f32) -> RSTensor {
+    fn pow(&self, tensor: &Tensor, exponent: f32) -> Tensor {
         match self {
-            RSTensors::CPU(cpu) => cpu.pow(tensor, exponent),
-            RSTensors::GPU(gpu) => gpu.pow(tensor, exponent),
+            Tensors::CPU(cpu) => cpu.pow(tensor, exponent),
+            Tensors::GPU(gpu) => gpu.pow(tensor, exponent),
         }
     }
 
-    fn sub(&self, a: &RSTensor, b: &RSTensor) -> RSTensor {
+    fn sub(&self, a: &Tensor, b: &Tensor) -> Tensor {
         match self {
-            RSTensors::CPU(cpu) => cpu.sub(a, b),
-            RSTensors::GPU(gpu) => gpu.sub(a, b),
+            Tensors::CPU(cpu) => cpu.sub(a, b),
+            Tensors::GPU(gpu) => gpu.sub(a, b),
         }
     }
 
-    fn relu(&self, tensor: &RSTensor) -> RSTensor {
+    fn relu(&self, tensor: &Tensor) -> Tensor {
         match self {
-            RSTensors::CPU(cpu) => cpu.relu(tensor),
-            RSTensors::GPU(gpu) => gpu.relu(tensor),
+            Tensors::CPU(cpu) => cpu.relu(tensor),
+            Tensors::GPU(gpu) => gpu.relu(tensor),
         }
     }
 
-    fn max(&self, tensor: &RSTensor) -> RSTensor {
+    fn max(&self, tensor: &Tensor) -> Tensor {
         match self {
-            RSTensors::CPU(cpu) => cpu.max(tensor),
-            RSTensors::GPU(gpu) => gpu.max(tensor),
+            Tensors::CPU(cpu) => cpu.max(tensor),
+            Tensors::GPU(gpu) => gpu.max(tensor),
         }
     }
 }

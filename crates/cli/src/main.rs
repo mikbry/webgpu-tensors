@@ -1,7 +1,7 @@
-use webgpu_tensors::{tensors_println, Device, RSTensors, Shape, TensorOptions, Tensors};
+use webgpu_tensors::{tensors_println, Device, Tensors, Shape, TensorOptions, TensorsOperations};
 
 fn main() {
-    let mut tensors = RSTensors::new(Device::CPU);
+    let mut tensors = Tensors::new(Device::CPU);
     tensors.init(None).unwrap();
 
     let shape: Shape = vec![2, 3];

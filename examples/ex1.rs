@@ -1,7 +1,7 @@
-use webgpu_tensors::{RSTensors, Tensors, Tensor, tensors_println, Device};
+use webgpu_tensors::{Tensors, TensorsOperations, tensors_println, Device};
 
 fn main() {
-    let mut t = RSTensors::new(Device::CPU);
+    let mut t = Tensors::new(Device::CPU);
     t.init(None).unwrap();
 
     // Rest of the code remains the same
@@ -61,7 +61,7 @@ fn main() {
     t.destroy();
 
     // Now test with GPU
-    let mut t = RSTensors::new(Device::GPU);
+    let mut t = Tensors::new(Device::GPU);
     t.init(None).unwrap();
 
     let x = t.rand(vec![5, 3], None);

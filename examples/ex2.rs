@@ -1,23 +1,23 @@
-use webgpu_tensors::{tensors_println, Device, RSTensor, RSTensors, Tensor, Tensors};
+use webgpu_tensors::{tensors_println, Device, Tensors, TensorsOperations, Tensor};
 use std::time::Instant;
 
 struct SimpleNN {
-    w1: RSTensor,
-    w2: RSTensor,
+    w1: Tensor,
+    w2: Tensor,
 }
 
 impl SimpleNN {
-    fn new(w1: RSTensor, w2: RSTensor) -> Self {
+    fn new(w1: Tensor, w2: Tensor) -> Self {
         SimpleNN { w1, w2 }
     }
 
-    fn init(t: &RSTensors, input_size: usize, hidden_size: usize, output_size: usize) -> Self {
+    fn init(t: &Tensors, input_size: usize, hidden_size: usize, output_size: usize) -> Self {
         let w1 = t.randn(vec![input_size, hidden_size], None);
         let w2 = t.randn(vec![hidden_size, output_size], None);
         SimpleNN::new(w1, w2)
     }
 
-    fn forward(&self, t: &RSTensors, x: &RSTensor) -> RSTensor {
+    fn forward(&self, t: &Tensors, x: &Tensor) -> Tensor {
         let xw1 = t.matmul(x, &self.w1);
         let h = t.relu(&xw1);
         t.matmul(&h, &self.w2)
@@ -25,7 +25,7 @@ impl SimpleNN {
 }
 
 fn main() {
-    let mut t = RSTensors::new(Device::CPU);
+    let mut t = Tensors::new(Device::CPU);
     t.init(None).unwrap();
 
     tensors_println!("Train a simple 2-layer neural network");
