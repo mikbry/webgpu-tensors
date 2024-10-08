@@ -4,7 +4,7 @@ import { Device } from 'packages/core/src/types';
 
 const testTensors = (tensors: Tensors, device: Device) => {
   describe('Tensors', () => {
-    test('Get Tensors Type', () => {
+    test(`Tensors device is ${device}`, () => {
       expect(tensors.device).toBe(device);
     });
   });
@@ -168,9 +168,9 @@ const testTensors = (tensors: Tensors, device: Device) => {
   });
 };
 
-describe('WebGPUTensors', () => {
+describe('WebGPUTensors', async () => {
   if (isAvailable(Device.GPU)) {
-    testTensors(device(Device.GPU), Device.GPU);
+    testTensors(await device(Device.GPU), Device.GPU);
   } else {
     test('No WebGPU Support', async () => {
       expect(isAvailable(Device.GPU)).toBe(false);
@@ -178,10 +178,10 @@ describe('WebGPUTensors', () => {
   }
 });
 
-describe('JSTensors', () => {
-  testTensors(device(Device.CPU), Device.CPU);
+describe('JSTensors', async () => {
+  testTensors(await device(Device.CPU), Device.CPU);
 });
 
-describe('WASMTensors', () => {
-  testTensors(device(Device.WASM), Device.WASM);
+describe('WASMTensors', async () => {
+  testTensors(await device(Device.WASM), Device.WASM);
 });

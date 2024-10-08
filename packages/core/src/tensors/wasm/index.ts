@@ -10,8 +10,8 @@ import {
   Float32NestedArray,
 } from '../../types';
 import ShapeSize from '../../size';
-import * as wasmModule from '../../../../wasm/webgpu-tensors';
 import { stridedToNestedArray, stridedToNestedFloat32Array } from '../../utils';
+import importWASMModule, { WASMTensorsImpl } from './module';
 
 export class WASMTensor implements Tensor {
   shape: ShapeSize;
@@ -20,12 +20,12 @@ export class WASMTensor implements Tensor {
   readable: boolean;
   data: unknown;
 
-  constructor(wasmTensor: WASMTensor) {
-    this.shape = wasmTensor.shape;
-    this.dtype = wasmTensor.dtype;
-    this.device = wasmTensor.device;
-    this.readable = wasmTensor.readable;
-    this.data = wasmTensor.data;
+  constructor(tensor: Tensor) {
+    this.shape = tensor.shape;
+    this.dtype = tensor.dtype;
+    this.device = tensor.device;
+    this.readable = tensor.readable;
+    this.data = (tensor as WASMTensor).data;
   }
 
   async readArray<T>(_options?: { mode?: 1 | undefined }): Promise<NestedArray<T>> {
@@ -52,23 +52,20 @@ export class WASMTensor implements Tensor {
 
 export class WASMTensors implements Tensors {
   device: Device;
-  private static _instance: wasmModule.WASMTensorsImpl;
+  private static wasm: WASMTensorsImpl;
 
   private constructor() {
     this.device = Device.WASM;
   }
 
-  public static getInstance(): wasmModule.WASMTensorsImpl {
-    if (!WASMTensors._instance) {
-      WASMTensors._instance = new wasmModule.WASMTensorsImpl();
+  public static getInstance(): WASMTensorsImpl {
+    if (!WASMTensors.wasm) {
+      throw new Error("WASM not instancied");
     }
-    return WASMTensors._instance;
+    return WASMTensors.wasm;
   }
 
   static create(): Tensors {
-    if (!WASMTensors._instance) {
-      WASMTensors._instance = new wasmModule.WASMTensorsImpl();
-    }
     return new WASMTensors();
   }
 
@@ -76,38 +73,43 @@ export class WASMTensors implements Tensors {
     if (device !== Device.WASM) {
       throw new Error('WASMTensors only supports WASM device');
     }
-    WASMTensors._instance.init();
+    if (!WASMTensors.wasm) {
+      const wasmModule = await importWASMModule();
+      const impl = new wasmModule.WASMTensorsImpl();
+      WASMTensors.wasm = impl;
+    }
+    WASMTensors.wasm.init();
   }
 
   reset(): void {
-    WASMTensors._instance.reset();
+    WASMTensors.wasm.reset();
   }
 
   compute(): void {
-    WASMTensors._instance.compute();
+    WASMTensors.wasm.compute();
   }
 
   destroy(): void {
-    WASMTensors._instance.destroy();
+    WASMTensors.wasm.destroy();
   }
 
   empty(shape: Shape, options?: Partial<TensorOptions>): Tensor {
-    const wasmTensor = WASMTensors._instance.empty(new Uint32Array(shape), options);
+    const wasmTensor = WASMTensors.wasm.empty(new Uint32Array(shape), options);
     return new WASMTensor(wasmTensor);
   }
 
   ones(shape: Shape, options?: Partial<TensorOptions>): Tensor {
-    const wasmTensor = WASMTensors._instance.ones(new Uint32Array(shape), options);
+    const wasmTensor = WASMTensors.wasm.ones(new Uint32Array(shape), options);
     return new WASMTensor(wasmTensor);
   }
 
   rand(shape: Shape, options?: Partial<TensorOptions>): Tensor {
-    const wasmTensor = WASMTensors._instance.rand(new Uint32Array(shape), options);
+    const wasmTensor = WASMTensors.wasm.rand(new Uint32Array(shape), options);
     return new WASMTensor(wasmTensor);
   }
 
   zeros(shape: Shape, options?: Partial<TensorOptions>): Tensor {
-    const wasmTensor = WASMTensors._instance.zeros(new Uint32Array(shape), options);
+    const wasmTensor = WASMTensors.wasm.zeros(new Uint32Array(shape), options);
     return new WASMTensor(wasmTensor);
   }
 
@@ -115,7 +117,7 @@ export class WASMTensors implements Tensors {
     const shape = ShapeSize.createFromNestedArray(array);
     const oned = shape.length === 1;
     const stridedArray = (oned ? array : array.flat(shape.length as 10)) as number[];
-    const wasmTensor = WASMTensors._instance.tensor(stridedArray, {
+    const wasmTensor = WASMTensors.wasm.tensor(stridedArray, {
       ...options,
       shape: oned ? undefined : shape.data,
     });
@@ -126,79 +128,79 @@ export class WASMTensors implements Tensors {
   }
 
   sub(tensorA: Tensor, tensorB: Tensor): Tensor {
-    const result = WASMTensors._instance.sub(tensorA, tensorB);
+    const result = WASMTensors.wasm.sub(tensorA, tensorB);
     return new WASMTensor(result);
   }
 
   pow(tensor: Tensor, exponent: number): Tensor {
-    const result = WASMTensors._instance.pow(tensor, exponent);
+    const result = WASMTensors.wasm.pow(tensor, exponent);
     return new WASMTensor(result);
   }
 
   gt(tensor: Tensor, value: number): Tensor {
-    const result = WASMTensors._instance.gt(tensor, value);
+    const result = WASMTensors.wasm.gt(tensor, value);
     return new WASMTensor(result);
   }
 
   transpose(tensor: Tensor): Tensor {
-    const result = WASMTensors._instance.transpose(tensor);
+    const result = WASMTensors.wasm.transpose(tensor);
     return new WASMTensor(result);
   }
 
   maximum(tensor: Tensor, value: number): Tensor {
-    const result = WASMTensors._instance.maximum(tensor, value);
+    const result = WASMTensors.wasm.maximum(tensor, value);
     return new WASMTensor(result);
   }
 
   relu(x: Tensor): Tensor {
-    const result = WASMTensors._instance.relu(x);
+    const result = WASMTensors.wasm.relu(x);
     return new WASMTensor(result);
   }
 
   max(tensor: Tensor): Tensor {
-    const result = WASMTensors._instance.max(tensor);
+    const result = WASMTensors.wasm.max(tensor);
     return new WASMTensor(result);
   }
 
   mean(tensor: Tensor): Tensor {
-    const result = WASMTensors._instance.mean(tensor);
+    const result = WASMTensors.wasm.mean(tensor);
     return new WASMTensor(result);
   }
 
   sigmoid(tensor: Tensor): Tensor {
-    const result = WASMTensors._instance.sigmoid(tensor);
+    const result = WASMTensors.wasm.sigmoid(tensor);
     return new WASMTensor(result);
   }
 
   clone(tensor: Tensor): Tensor {
-    const result = WASMTensors._instance.clone(tensor);
+    const result = WASMTensors.wasm.clone(tensor);
     return new WASMTensor(result);
   }
 
   copy(tensorSource: Tensor, tensorDestination: Tensor): void {
-    WASMTensors._instance.copy(tensorSource, tensorDestination);
+    WASMTensors.wasm.copy(tensorSource, tensorDestination);
   }
 
   async item(tensor: Tensor): Promise<number> {
-    return WASMTensors._instance.item(tensor);
+    return WASMTensors.wasm.item(tensor);
   }
 
   randn(shape: Shape, options?: Partial<TensorOptions>): Tensor {
-    const result = WASMTensors._instance.randn(new Uint32Array(shape), options);
+    const result = WASMTensors.wasm.randn(new Uint32Array(shape), options);
     return new WASMTensor(result);
   }
 
   matmul(tensorA: Tensor, tensorB: Tensor): Tensor {
-    const result = WASMTensors._instance.matmul(tensorA, tensorB);
+    const result = WASMTensors.wasm.matmul(tensorA, tensorB);
     return new WASMTensor(result);
   }
 
   mul(tensorA: Tensor, tensorB: Tensor | number): Tensor {
     if (typeof tensorB === 'number') {
-      const result = WASMTensors._instance.mul_scalar(tensorA, tensorB);
+      const result = WASMTensors.wasm.mul_scalar(tensorA, tensorB);
       return new WASMTensor(result);
     } else {
-      const result = WASMTensors._instance.mul(tensorA, tensorB);
+      const result = WASMTensors.wasm.mul(tensorA, tensorB);
       return new WASMTensor(result);
     }
   }

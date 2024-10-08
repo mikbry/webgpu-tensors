@@ -1,7 +1,7 @@
 // #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 // #[cfg(target_arch = "wasm32")]
-use webgpu_tensors::{CPUTensors, Tensor, TensorOptions, Tensors, TensorsOperations};
+use webgpu_tensors::{Tensor, TensorOptions, Tensors, TensorsOperations};
 // #[cfg(target_arch = "wasm32")]
 use serde::{Deserialize, Serialize};
 // #[cfg(target_arch = "wasm32")]

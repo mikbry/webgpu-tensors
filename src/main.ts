@@ -11,7 +11,7 @@ await t.copy(writeTensor, readTensor);
 
 t.print(readTensor); */
 
-const t = device(Device.WASM);
+const t = await device(Device.WASM);
 const x = t.rand([5, 3]);
 t.print(x);
 const xx = t.clone(x);

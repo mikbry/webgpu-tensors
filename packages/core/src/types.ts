@@ -12,11 +12,14 @@ export type NestedArray<T> = Array<NestedArray<T> | T>;
 
 export type Float32NestedArray = Array<Float32NestedArray> | Float32Array;
 
-export type Shape = number[];
+export type Shape = number[] | Uint32Array;
 
-export interface Tensors {
-  device: Device;
-  init(device?: Device): Promise<void>;
+export interface TensorsOperations {
+
+  reset(): void;
+  compute(): void;
+  destroy(): void;
+
   empty(shape: Shape, options?: Partial<TensorOptions> | undefined): Tensor;
   ones(shape: Shape, options?: Partial<TensorOptions> | undefined): Tensor;
   rand(shape: Shape, options?: Partial<TensorOptions> | undefined): Tensor;
@@ -42,13 +45,11 @@ export interface Tensors {
 
   clone(tensorSource: Tensor): Tensor;
   copy(tensorSource: Tensor, tensorDestination: Tensor): void;
-
+}
+export interface Tensors extends TensorsOperations {
+  device: Device;
+  init(device?: Device): Promise<void>;
   item(tensor: Tensor): Promise<number>;
-
-  reset(): void;
-  compute(): void;
-  destroy(): void;
-
   print(...data: unknown[]): Promise<void>;
 }
 

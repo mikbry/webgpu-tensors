@@ -1,7 +1,7 @@
 import { Device, DType, NestedArray, Shape, Tensor, TensorOptions, Tensors } from './types';
 import { JSTensors } from './tensors/js';
 import WebGPUTensors from './tensors/webgpu';
-// import { WASMTensors } from './tensors/wasm';
+import { WASMTensors } from './tensors/wasm';
 
 class Framework implements Tensors {
   device: Device;
@@ -100,26 +100,31 @@ export function isAvailable(device: Device): boolean {
   }
 }
 
-export function device(
-  device: Device | undefined = WebGPUTensors.isAvailable() ? Device.GPU : Device.CPU,
-): Tensors {
+function start(device: Device | undefined = WebGPUTensors.isAvailable() ? Device.GPU : Device.CPU): Tensors {
   let implementation: Tensors;
   if (device === Device.GPU) {
     implementation = WebGPUTensors.create();
   } else if (device === Device.CPU) {
     implementation = JSTensors.create();
-  } /* else if (device === Device.WASM) {
+  } else if (device === Device.WASM) {
     implementation = WASMTensors.create();
-  } */ else {
+  } else {
     throw new Error('Unknown device ' + device);
   }
   const framework = new Framework(device, implementation);
   framework.device = device;
-  framework.init();
   return framework;
 }
 
-export default device();
+export async function device(
+  device: Device | undefined,
+): Promise<Tensors> {
+  const framework = start(device);
+  await framework.init();
+  return framework;
+}
+
+export default start();
 
 export { DType, Device };
 export type { Tensors as Tensors, Tensor };
